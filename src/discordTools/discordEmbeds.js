@@ -155,14 +155,14 @@ module.exports = {
 
             /* Steam ID with status emoji */
             const steamStatus = steamStatusData[player.steamId];
-            let steamEmoji = '⚫'; /* Default offline */
+            let steamEmoji = '⚪'; /* Default offline */
             if (steamStatus) {
                 switch (steamStatus.personaState) {
                     case 1: steamEmoji = '🟢'; break; /* Online */
                     case 2: steamEmoji = '🔴'; break; /* Busy */
                     case 3: steamEmoji = '🟡'; break; /* Away */
                     case 4: steamEmoji = '🟠'; break; /* Snooze */
-                    default: steamEmoji = '⚫'; break; /* Offline */
+                    default: steamEmoji = '⚪'; break; /* Offline */
                 }
             }
 
@@ -276,7 +276,7 @@ module.exports = {
         /* Add legend field */
         fields.push({
             name: '__Legend__',
-            value: '**Steam:** 🟢 Online 🟡 Away 🔴 Busy 🟠 Snooze ⚫ Offline\n**Server:** 🟢 On Server 🟡 Other Server 🔴 Offline',
+            value: '**Steam:** 🟢 Online 🟡 Away 🔴 Busy 🟠 Snooze ⚪ Offline\n**Server:** 🟢 On Server 🟡 Other Server 🔴 Offline',
             inline: false
         });
 
