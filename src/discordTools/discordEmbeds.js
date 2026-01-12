@@ -157,7 +157,7 @@ module.exports = {
             const steamStatus = steamStatusData[player.steamId];
             let steamEmoji = '⚫'; /* Default offline */
             if (steamStatus) {
-                switch (steamStatus.personastate) {
+                switch (steamStatus.personaState) {
                     case 1: steamEmoji = '🟢'; break; /* Online */
                     case 2: steamEmoji = '🔴'; break; /* Busy */
                     case 3: steamEmoji = '🟡'; break; /* Away */
