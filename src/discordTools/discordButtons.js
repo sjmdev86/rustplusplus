@@ -446,6 +446,11 @@ module.exports = {
                     style: tracker.everyone ? SUCCESS : DANGER
                 }),
                 module.exports.getButton({
+                    customId: `TrackerAllServers${identifier}`,
+                    label: 'ALL SERVERS',
+                    style: tracker.allServersNotify ? SUCCESS : DANGER
+                }),
+                module.exports.getButton({
                     customId: `TrackerUpdate${identifier}`,
                     label: Client.client.intlGet(guildId, 'updateCap'),
                     style: PRIMARY

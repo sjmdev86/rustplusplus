@@ -80,6 +80,10 @@ module.exports = {
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxEvents')}`)) {
             response = rustplus.getCommandEvents(command);
         }
+        else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxForce')}` ||
+            commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxForce')}`) {
+            response = rustplus.getCommandForce();
+        }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxHeli')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxHeli')}`) {
             response = rustplus.getCommandHeli();

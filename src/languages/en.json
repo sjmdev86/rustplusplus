@@ -122,6 +122,7 @@
     "commandSyntaxDecay": "decay",
     "commandSyntaxDespawn": "despawn",
     "commandSyntaxEvents": "events",
+    "commandSyntaxForce": "force",
     "commandSyntaxHeli": "heli",
     "commandSyntaxLanguage": "language",
     "commandSyntaxLarge": "large",

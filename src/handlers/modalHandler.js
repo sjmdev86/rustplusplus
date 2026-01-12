@@ -265,7 +265,9 @@ module.exports = async (client, interaction) => {
         const tracker = instance.trackers[ids.trackerId];
         const trackerName = interaction.fields.getTextInputValue('TrackerName');
         const trackerBattlemetricsId = interaction.fields.getTextInputValue('TrackerBattlemetricsId');
+        const trackerBaseLocation = interaction.fields.getTextInputValue('TrackerBaseLocation');
         const trackerClanTag = interaction.fields.getTextInputValue('TrackerClanTag');
+        const trackerNotes = interaction.fields.getTextInputValue('TrackerNotes');
 
         if (!tracker) {
             interaction.deferUpdate();
@@ -273,6 +275,8 @@ module.exports = async (client, interaction) => {
         }
 
         tracker.name = trackerName;
+        tracker.notes = trackerNotes;
+        tracker.baseLocation = trackerBaseLocation;
         if (trackerClanTag !== tracker.clanTag) {
             tracker.clanTag = trackerClanTag;
             client.battlemetricsIntervalCounter = 0;

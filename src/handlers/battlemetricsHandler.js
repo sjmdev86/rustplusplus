@@ -117,10 +117,13 @@ module.exports = {
                     for (const player of content.players) {
                         if (player.playerId !== playerId) continue;
 
-                        const str = client.intlGet(guildId, 'playerJustConnectedTracker', {
+                        let str = client.intlGet(guildId, 'playerJustConnectedTracker', {
                             name: player.name,
                             tracker: content.name
                         });
+                        if (content.baseLocation && content.baseLocation !== '') {
+                            str = str.replace('.', ` (Base Location: ${content.baseLocation})`);
+                        }
                         await DiscordMessages.sendActivityNotificationMessage(
                             guildId, content.serverId, Constants.COLOR_ACTIVE, str, null, content.title,
                             content.everyone);
@@ -135,10 +138,13 @@ module.exports = {
                     for (const player of content.players) {
                         if (player.playerId !== playerId) continue;
 
-                        const str = client.intlGet(guildId, 'playerJustConnectedTracker', {
+                        let str = client.intlGet(guildId, 'playerJustConnectedTracker', {
                             name: player.name,
                             tracker: content.name
                         });
+                        if (content.baseLocation && content.baseLocation !== '') {
+                            str = str.replace('.', ` (Base Location: ${content.baseLocation})`);
+                        }
                         await DiscordMessages.sendActivityNotificationMessage(
                             guildId, content.serverId, Constants.COLOR_ACTIVE, str, null, content.title,
                             content.everyone);
@@ -163,6 +169,54 @@ module.exports = {
                             content.everyone);
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
+                        }
+                    }
+                }
+
+                /* Check if Player connected to another server (allServersNotify) */
+                if (content.allServersNotify) {
+                    for (const player of content.players) {
+                        if (!player.playerId) continue;
+
+                        /* Skip if player is online on tracker's server */
+                        const isOnTrackerServer = bmInstance.players.hasOwnProperty(player.playerId) &&
+                            bmInstance.players[player.playerId]['status'];
+                        if (isOnTrackerServer) {
+                            /* Clear lastKnownServer when on tracker's server */
+                            if (player.lastKnownServer) {
+                                player.lastKnownServer = null;
+                            }
+                            continue;
+                        }
+
+                        /* Check if player is on another server */
+                        const serverInfo = await bmInstance.getPlayerCurrentServer(player.playerId);
+                        if (serverInfo && serverInfo.name) {
+                            /* Player is on another server - check if it's new */
+                            const lastServer = player.lastKnownServer || null;
+                            if (lastServer !== serverInfo.name) {
+                                /* New server detected - send notification */
+                                let str = `${player.name} connected to ${serverInfo.name}`;
+                                if (content.baseLocation && content.baseLocation !== '') {
+                                    str += ` (Base Location: ${content.baseLocation})`;
+                                }
+
+                                await DiscordMessages.sendActivityNotificationMessage(
+                                    guildId, content.serverId, Constants.COLOR_DEFAULT, str, null, content.title,
+                                    content.everyone);
+                                if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
+                                    rustplus.sendInGameMessage(str);
+                                }
+
+                                /* Update lastKnownServer */
+                                player.lastKnownServer = serverInfo.name;
+                            }
+                        }
+                        else {
+                            /* Player is offline - clear lastKnownServer */
+                            if (player.lastKnownServer) {
+                                player.lastKnownServer = null;
+                            }
                         }
                     }
                 }

@@ -2442,6 +2442,48 @@ class RustPlus extends RustPlusLib {
         }
     }
 
+    getCommandForce() {
+        const now = new Date();
+
+        /* Find the first Thursday of the current month at 2pm EST */
+        let forceWipeDate = new Date(now.getFullYear(), now.getMonth(), 1, 14, 0, 0, 0);
+
+        /* Find the first Thursday (day 4) */
+        while (forceWipeDate.getDay() !== 4) {
+            forceWipeDate.setDate(forceWipeDate.getDate() + 1);
+        }
+
+        /* Convert to EST (UTC-5) - we need to set the time in EST */
+        /* Create date in EST timezone */
+        const estOffset = -5 * 60; /* EST is UTC-5 */
+        const localOffset = now.getTimezoneOffset();
+        const offsetDiff = localOffset + estOffset;
+
+        forceWipeDate = new Date(forceWipeDate.getTime() + offsetDiff * 60 * 1000);
+
+        /* If the force wipe date has passed, get next month's first Thursday */
+        if (now >= forceWipeDate) {
+            forceWipeDate = new Date(now.getFullYear(), now.getMonth() + 1, 1, 14, 0, 0, 0);
+            while (forceWipeDate.getDay() !== 4) {
+                forceWipeDate.setDate(forceWipeDate.getDate() + 1);
+            }
+            forceWipeDate = new Date(forceWipeDate.getTime() + offsetDiff * 60 * 1000);
+        }
+
+        /* Calculate the difference */
+        const diffMs = forceWipeDate - now;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        let result = '';
+        if (diffDays > 0) result += `${diffDays} day${diffDays !== 1 ? 's' : ''}, `;
+        if (diffHours > 0 || diffDays > 0) result += `${diffHours} hour${diffHours !== 1 ? 's' : ''}, `;
+        result += `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
+
+        return `${result} until force wipe.`;
+    }
+
     getCommandTimer(command) {
         const prefix = this.generalSettings.prefix;
         const commandTimer = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxTimer')}`;

@@ -547,8 +547,11 @@ module.exports = async (client, interaction) => {
             title: server.title,
             img: server.img,
             clanTag: '',
+            notes: '',
+            baseLocation: '',
             everyone: false,
             inGame: true,
+            allServersNotify: false,
             players: [],
             messageId: null
         }
@@ -1060,6 +1063,25 @@ module.exports = async (client, interaction) => {
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
             id: `${verifyId}`,
             value: `${tracker.everyone}`
+        }));
+
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+    }
+    else if (interaction.customId.startsWith('TrackerAllServers')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerAllServers', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.message.delete();
+            return;
+        }
+
+        tracker.allServersNotify = !tracker.allServersNotify;
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `${tracker.allServersNotify}`
         }));
 
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);

@@ -286,10 +286,26 @@ module.exports = {
                 style: Discord.TextInputStyle.Short
             })),
             new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerBaseLocation',
+                label: 'Base Location',
+                value: tracker.baseLocation || '',
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
                 customId: 'TrackerClanTag',
                 label: Client.client.intlGet(guildId, 'clanTag'),
                 value: tracker.clanTag,
                 style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerNotes',
+                label: 'Notes',
+                value: tracker.notes || '',
+                style: Discord.TextInputStyle.Paragraph,
                 required: false,
                 minLength: 0
             }))
