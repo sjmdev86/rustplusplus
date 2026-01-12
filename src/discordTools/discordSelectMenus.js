@@ -39,6 +39,8 @@ module.exports = {
             selectMenu.setOptions(options.options);
         }
         if (options.hasOwnProperty('disabled')) selectMenu.setDisabled(options.disabled);
+        if (options.hasOwnProperty('minValues')) selectMenu.setMinValues(options.minValues);
+        if (options.hasOwnProperty('maxValues')) selectMenu.setMaxValues(options.maxValues);
 
         return selectMenu;
     },
@@ -349,6 +351,39 @@ module.exports = {
             module.exports.getSelectMenu({
                 customId: `TrackerPlayerSelect${identifier}`,
                 placeholder: 'Select a player to edit',
+                options: options
+            }));
+    },
+
+    getTrackerPlayerRemoveSelectMenu: function (guildId, trackerId) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const identifier = JSON.stringify({ "trackerId": trackerId });
+
+        const options = [];
+        for (let i = 0; i < tracker.players.length && i < 25; i++) {
+            const player = tracker.players[i];
+            const playerId = player.steamId || player.playerId || 'unknown';
+            const playerName = player.name || 'Unknown';
+            options.push({
+                label: playerName.substring(0, 100),
+                description: `ID: ${playerId}`.substring(0, 100),
+                value: `${i}`
+            });
+        }
+
+        if (options.length === 0) {
+            options.push({
+                label: 'No players',
+                description: 'No players in this tracker',
+                value: 'none'
+            });
+        }
+
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getSelectMenu({
+                customId: `TrackerPlayerRemove${identifier}`,
+                placeholder: 'Select a player to remove',
                 options: options
             }));
     },

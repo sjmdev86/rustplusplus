@@ -92,7 +92,7 @@ module.exports = {
         });
         const trackerButton = module.exports.getButton({
             customId: `CreateTracker${identifier}`,
-            label: Client.client.intlGet(guildId, 'createTrackerCap'),
+            label: Client.client.intlGet(guildId, 'createTracker'),
             style: PRIMARY
         });
         const groupButton = module.exports.getButton({
@@ -416,22 +416,22 @@ module.exports = {
             new Discord.ActionRowBuilder().addComponents(
                 module.exports.getButton({
                     customId: `TrackerAddPlayer${identifier}`,
-                    label: Client.client.intlGet(guildId, 'addPlayerCap'),
+                    label: Client.client.intlGet(guildId, 'addPlayer'),
                     style: SUCCESS
                 }),
                 module.exports.getButton({
                     customId: `TrackerEditPlayer${identifier}`,
-                    label: 'EDIT PLAYER',
+                    label: Client.client.intlGet(guildId, 'editPlayer'),
                     style: PRIMARY
                 }),
                 module.exports.getButton({
                     customId: `TrackerRemovePlayer${identifier}`,
-                    label: Client.client.intlGet(guildId, 'removePlayerCap'),
+                    label: Client.client.intlGet(guildId, 'removePlayer'),
                     style: DANGER
                 }),
                 module.exports.getButton({
                     customId: `TrackerEdit${identifier}`,
-                    label: Client.client.intlGet(guildId, 'editCap'),
+                    label: Client.client.intlGet(guildId, 'editTracker'),
                     style: PRIMARY
                 }),
                 module.exports.getButton({
@@ -441,26 +441,39 @@ module.exports = {
                 })),
             new Discord.ActionRowBuilder().addComponents(
                 module.exports.getButton({
-                    customId: `TrackerInGame${identifier}`,
-                    label: Client.client.intlGet(guildId, 'inGameCap'),
-                    style: tracker.inGame ? SUCCESS : DANGER
+                    customId: `TrackerConfigure${identifier}`,
+                    label: Client.client.intlGet(guildId, 'toggleFeatures'),
+                    style: PRIMARY
                 }),
                 module.exports.getButton({
-                    customId: `TrackerEveryone${identifier}`,
-                    label: '@everyone',
-                    style: tracker.everyone ? SUCCESS : DANGER
-                }),
-                module.exports.getButton({
-                    customId: `TrackerAllServers${identifier}`,
-                    label: 'ALL SERVERS',
-                    style: tracker.allServersNotify ? SUCCESS : DANGER
-                }),
-                module.exports.getButton({
-                    customId: `TrackerUpdate${identifier}`,
-                    label: Client.client.intlGet(guildId, 'updateCap'),
+                    customId: `TrackerRefresh${identifier}`,
+                    label: Client.client.intlGet(guildId, 'refresh'),
                     style: PRIMARY
                 }))
         ];
+    },
+
+    getTrackerSettingsButtons: function (guildId, trackerId) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const identifier = JSON.stringify({ "trackerId": trackerId });
+
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getButton({
+                customId: `TrackerSettingInGame${identifier}`,
+                label: Client.client.intlGet(guildId, 'inGameNotifications'),
+                style: tracker.inGame ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
+                customId: `TrackerSettingEveryone${identifier}`,
+                label: Client.client.intlGet(guildId, 'mentionEveryone'),
+                style: tracker.everyone ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
+                customId: `TrackerSettingAllServers${identifier}`,
+                label: Client.client.intlGet(guildId, 'multiServerAlerts'),
+                style: tracker.allServersNotify ? SUCCESS : DANGER
+            }));
     },
 
     getNewsButton: function (guildId, body, validURL) {

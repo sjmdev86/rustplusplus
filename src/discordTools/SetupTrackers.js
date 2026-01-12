@@ -26,6 +26,15 @@ module.exports = async (client, guild) => {
 
     await DiscordTools.clearTextChannel(guild.id, instance.channelId.trackers, 100);
 
+    /* Reset legend message ID since channel was cleared */
+    instance.trackerLegendMessageId = null;
+    client.setInstance(guild.id, instance);
+
+    /* Send legend message first if there are trackers */
+    if (Object.keys(instance.trackers).length > 0) {
+        await DiscordMessages.sendTrackerLegendMessage(guild.id);
+    }
+
     for (const trackerId in instance.trackers) {
         await DiscordMessages.sendTrackerMessage(guild.id, trackerId);
     }

@@ -164,6 +164,29 @@ module.exports = async (client, interaction) => {
         const modal = DiscordModals.getTrackerEditPlayerModal(guildId, ids.trackerId, parseInt(playerIndex));
         await interaction.showModal(modal);
     }
+    else if (interaction.customId.startsWith('TrackerPlayerRemove')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerPlayerRemove', ''));
+        const tracker = instance.trackers[ids.trackerId];
+        const playerIndex = interaction.values[0];
+
+        if (!tracker || playerIndex === 'none') {
+            interaction.deferUpdate();
+            return;
+        }
+
+        const index = parseInt(playerIndex);
+        const removedPlayer = tracker.players[index];
+        tracker.players.splice(index, 1);
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'selectMenuValueChange', {
+            id: `${verifyId}`,
+            value: `Removed player: ${removedPlayer.name}`
+        }));
+
+        await interaction.deferUpdate();
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, null, false);
+    }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userSelectMenuInteractionSuccess', {
         id: `${verifyId}`

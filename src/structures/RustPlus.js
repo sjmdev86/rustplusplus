@@ -2747,6 +2747,71 @@ class RustPlus extends RustPlusLib {
         }
     }
 
+    getCommandTracker(command) {
+        const instance = Client.client.getInstance(this.guildId);
+        const prefix = this.generalSettings.prefix;
+        const commandTracker = Client.client.intlGet(this.guildId, 'commandSyntaxTracker');
+
+        /* Extract tracker name from command (everything after "!tracker ") */
+        let searchName = command.slice(`${prefix}${commandTracker}`.length).trim().toLowerCase();
+
+        const trackers = Object.entries(instance.trackers);
+        if (trackers.length === 0) {
+            return Client.client.intlGet(this.guildId, 'noTrackersConfigured');
+        }
+
+        /* If no name provided, list all trackers */
+        if (searchName === '') {
+            const results = [];
+            for (const [trackerId, tracker] of trackers) {
+                const bmInstance = Client.client.battlemetricsInstances[tracker.battlemetricsId];
+                if (!bmInstance) continue;
+
+                let onlineCount = 0;
+                for (const player of tracker.players) {
+                    if (player.playerId && bmInstance.players.hasOwnProperty(player.playerId) &&
+                        bmInstance.players[player.playerId]['status']) {
+                        onlineCount++;
+                    }
+                }
+                results.push(`${tracker.name}: ${onlineCount}/${tracker.players.length}`);
+            }
+            return results.length > 0 ? results.join(' | ') : Client.client.intlGet(this.guildId, 'noTrackersConfigured');
+        }
+
+        /* Search for tracker by name (partial match) */
+        const matchingTrackers = trackers.filter(([id, t]) =>
+            t.name.toLowerCase().includes(searchName));
+
+        if (matchingTrackers.length === 0) {
+            return Client.client.intlGet(this.guildId, 'trackerNotFound', { name: searchName });
+        }
+
+        const results = [];
+        for (const [trackerId, tracker] of matchingTrackers) {
+            const bmInstance = Client.client.battlemetricsInstances[tracker.battlemetricsId];
+            if (!bmInstance) continue;
+
+            let onlineCount = 0;
+            const onlinePlayers = [];
+            for (const player of tracker.players) {
+                if (player.playerId && bmInstance.players.hasOwnProperty(player.playerId) &&
+                    bmInstance.players[player.playerId]['status']) {
+                    onlineCount++;
+                    onlinePlayers.push(player.name);
+                }
+            }
+
+            let result = `${tracker.name}: ${onlineCount}/${tracker.players.length} online`;
+            if (onlinePlayers.length > 0 && onlinePlayers.length <= 5) {
+                result += ` (${onlinePlayers.join(', ')})`;
+            }
+            results.push(result);
+        }
+
+        return results.length > 0 ? results.join(' | ') : Client.client.intlGet(this.guildId, 'trackerNotFound', { name: searchName });
+    }
+
     getCommandTravelingVendor(isInfoChannel = false) {
         const strings = [];
         for (const travelingVendor of this.mapMarkers.travelingVendors) {

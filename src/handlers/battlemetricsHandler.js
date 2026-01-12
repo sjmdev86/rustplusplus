@@ -23,6 +23,23 @@ const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const Scrape = require('../util/scrape.js');
 
+/**
+ * Count how many tracked players from a tracker are currently online on the server
+ */
+function getTrackerOnlineCount(bmInstance, trackerPlayers) {
+    let onlineCount = 0;
+    const totalCount = trackerPlayers.length;
+
+    for (const player of trackerPlayers) {
+        if (player.playerId && bmInstance.players.hasOwnProperty(player.playerId) &&
+            bmInstance.players[player.playerId]['status']) {
+            onlineCount++;
+        }
+    }
+
+    return { online: onlineCount, total: totalCount };
+}
+
 module.exports = {
     handler: async function (client, firstTime = false) {
         const searchSteamProfiles = (client.battlemetricsIntervalCounter === 0) ? true : false;
@@ -117,12 +134,14 @@ module.exports = {
                     for (const player of content.players) {
                         if (player.playerId !== playerId) continue;
 
+                        const counts = getTrackerOnlineCount(bmInstance, content.players);
                         let str = client.intlGet(guildId, 'playerJustConnectedTracker', {
                             name: player.name,
                             tracker: content.name
                         });
+                        str += ` (${counts.online}/${counts.total} tracked online)`;
                         if (content.baseLocation && content.baseLocation !== '') {
-                            str = str.replace('.', ` (Base Location: ${content.baseLocation})`);
+                            str += ` [Base: ${content.baseLocation}]`;
                         }
                         await DiscordMessages.sendActivityNotificationMessage(
                             guildId, content.serverId, Constants.COLOR_ACTIVE, str, null, content.title,
@@ -138,12 +157,14 @@ module.exports = {
                     for (const player of content.players) {
                         if (player.playerId !== playerId) continue;
 
+                        const counts = getTrackerOnlineCount(bmInstance, content.players);
                         let str = client.intlGet(guildId, 'playerJustConnectedTracker', {
                             name: player.name,
                             tracker: content.name
                         });
+                        str += ` (${counts.online}/${counts.total} tracked online)`;
                         if (content.baseLocation && content.baseLocation !== '') {
-                            str = str.replace('.', ` (Base Location: ${content.baseLocation})`);
+                            str += ` [Base: ${content.baseLocation}]`;
                         }
                         await DiscordMessages.sendActivityNotificationMessage(
                             guildId, content.serverId, Constants.COLOR_ACTIVE, str, null, content.title,
@@ -159,10 +180,12 @@ module.exports = {
                     for (const player of content.players) {
                         if (player.playerId !== playerId) continue;
 
-                        const str = client.intlGet(guildId, 'playerJustDisconnectedTracker', {
+                        const counts = getTrackerOnlineCount(bmInstance, content.players);
+                        let str = client.intlGet(guildId, 'playerJustDisconnectedTracker', {
                             name: player.name,
                             tracker: content.name
                         });
+                        str += ` (${counts.online}/${counts.total} tracked online)`;
 
                         await DiscordMessages.sendActivityNotificationMessage(
                             guildId, content.serverId, Constants.COLOR_INACTIVE, str, null, content.title,

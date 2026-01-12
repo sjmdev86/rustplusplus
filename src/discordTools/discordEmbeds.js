@@ -298,13 +298,6 @@ module.exports = {
             });
         }
 
-        /* Add legend field */
-        fields.push({
-            name: '__Legend__',
-            value: '🟢 Online\n🟡 Away/Idle\n🚫 Busy/DND\n🟠 Snooze\n🔴 Offline\n🔵 On Another Server\n❔ N/A',
-            inline: false
-        });
-
         return module.exports.getEmbed({
             title: `${tracker.name}`,
             color: Constants.COLOR_DEFAULT,

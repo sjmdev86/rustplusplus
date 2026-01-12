@@ -541,6 +541,9 @@ module.exports = async (client, interaction) => {
         /* Find an available tracker id */
         const trackerId = client.findAvailableTrackerId(guildId);
 
+        /* Send legend message if this is the first tracker */
+        const isFirstTracker = Object.keys(instance.trackers).length === 0;
+
         instance.trackers[trackerId] = {
             name: 'Tracker',
             serverId: ids.serverId,
@@ -554,6 +557,10 @@ module.exports = async (client, interaction) => {
             messageId: null
         }
         client.setInstance(guildId, instance);
+
+        if (isFirstTracker) {
+            await DiscordMessages.sendTrackerLegendMessage(guildId);
+        }
 
         await DiscordMessages.sendTrackerMessage(guildId, trackerId);
     }
@@ -1046,58 +1053,97 @@ module.exports = async (client, interaction) => {
         const modal = DiscordModals.getGroupRemoveSwitchModal(guildId, ids.serverId, ids.groupId);
         await interaction.showModal(modal);
     }
-    else if (interaction.customId.startsWith('TrackerEveryone')) {
-        const ids = JSON.parse(interaction.customId.replace('TrackerEveryone', ''));
+    else if (interaction.customId.startsWith('TrackerRefresh')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerRefresh', ''));
         const tracker = instance.trackers[ids.trackerId];
 
         if (!tracker) {
             await interaction.message.delete();
+            return;
+        }
+
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+    }
+    else if (interaction.customId.startsWith('TrackerConfigure')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerConfigure', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.message.delete();
+            return;
+        }
+
+        const settingsButtons = DiscordButtons.getTrackerSettingsButtons(guildId, ids.trackerId);
+        let content = client.intlGet(guildId, 'trackerSettingsDescription');
+
+        /* Add link to legend if it exists */
+        if (instance.trackerLegendMessageId) {
+            const legendLink = `https://discord.com/channels/${guildId}/${instance.channelId.trackers}/${instance.trackerLegendMessageId}`;
+            content += `\n[${client.intlGet(guildId, 'viewLegend')}](${legendLink})`;
+        }
+
+        await interaction.reply({
+            content: content,
+            components: [settingsButtons],
+            ephemeral: true
+        });
+    }
+    else if (interaction.customId.startsWith('TrackerSettingInGame')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerSettingInGame', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.deferUpdate();
+            return;
+        }
+
+        tracker.inGame = !tracker.inGame;
+        client.setInstance(guildId, instance);
+
+        const settingsButtons = DiscordButtons.getTrackerSettingsButtons(guildId, ids.trackerId);
+        await interaction.update({
+            components: [settingsButtons]
+        });
+
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, null, false);
+    }
+    else if (interaction.customId.startsWith('TrackerSettingEveryone')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerSettingEveryone', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.deferUpdate();
             return;
         }
 
         tracker.everyone = !tracker.everyone;
         client.setInstance(guildId, instance);
 
-        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
-            id: `${verifyId}`,
-            value: `${tracker.everyone}`
-        }));
+        const settingsButtons = DiscordButtons.getTrackerSettingsButtons(guildId, ids.trackerId);
+        await interaction.update({
+            components: [settingsButtons]
+        });
 
-        /* Respond immediately - just a toggle */
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, null, false);
     }
-    else if (interaction.customId.startsWith('TrackerAllServers')) {
-        const ids = JSON.parse(interaction.customId.replace('TrackerAllServers', ''));
+    else if (interaction.customId.startsWith('TrackerSettingAllServers')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerSettingAllServers', ''));
         const tracker = instance.trackers[ids.trackerId];
 
         if (!tracker) {
-            await interaction.message.delete();
+            await interaction.deferUpdate();
             return;
         }
 
         tracker.allServersNotify = !tracker.allServersNotify;
         client.setInstance(guildId, instance);
 
-        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
-            id: `${verifyId}`,
-            value: `${tracker.allServersNotify}`
-        }));
+        const settingsButtons = DiscordButtons.getTrackerSettingsButtons(guildId, ids.trackerId);
+        await interaction.update({
+            components: [settingsButtons]
+        });
 
-        /* Respond immediately - just a toggle */
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
-    }
-    else if (interaction.customId.startsWith('TrackerUpdate')) {
-        const ids = JSON.parse(interaction.customId.replace('TrackerUpdate', ''));
-        const tracker = instance.trackers[ids.trackerId];
-
-        if (!tracker) {
-            await interaction.message.delete();
-            return;
-        }
-
-        // TODO! Remove name change icon from status
-
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, null, false);
     }
     else if (interaction.customId.startsWith('TrackerEditPlayer')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerEditPlayer', ''));
@@ -1173,28 +1219,17 @@ module.exports = async (client, interaction) => {
             return;
         }
 
-        const modal = DiscordModals.getTrackerRemovePlayerModal(guildId, ids.trackerId);
-        await interaction.showModal(modal);
-    }
-    else if (interaction.customId.startsWith('TrackerInGame')) {
-        const ids = JSON.parse(interaction.customId.replace('TrackerInGame', ''));
-        const tracker = instance.trackers[ids.trackerId];
-
-        if (!tracker) {
-            await interaction.message.delete();
+        if (tracker.players.length === 0) {
+            await interaction.reply({ content: client.intlGet(guildId, 'noPlayersToRemove'), ephemeral: true });
             return;
         }
 
-        tracker.inGame = !tracker.inGame;
-        client.setInstance(guildId, instance);
-
-        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
-            id: `${verifyId}`,
-            value: `${tracker.inGame}`
-        }));
-
-        /* Respond immediately - just a toggle */
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
+        const selectMenu = DiscordSelectMenus.getTrackerPlayerRemoveSelectMenu(guildId, ids.trackerId);
+        await interaction.reply({
+            content: client.intlGet(guildId, 'selectPlayerToRemove'),
+            components: [selectMenu],
+            ephemeral: true
+        });
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userButtonInteractionSuccess', {

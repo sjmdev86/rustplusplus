@@ -169,6 +169,7 @@ module.exports = (client, guild) => {
         if (!instance.hasOwnProperty('serverList')) instance.serverList = {};
         if (!instance.hasOwnProperty('serverListLite')) instance.serverListLite = {};
         if (!instance.hasOwnProperty('trackers')) instance.trackers = {};
+        if (!instance.hasOwnProperty('trackerLegendMessageId')) instance.trackerLegendMessageId = null;
         if (!instance.hasOwnProperty('marketSubscriptionList')) instance.marketSubscriptionList = {
             all: [],
             buy: [],

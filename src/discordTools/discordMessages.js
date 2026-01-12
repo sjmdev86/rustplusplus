@@ -209,6 +209,48 @@ module.exports = {
         }
     },
 
+    sendTrackerLegendMessage: async function (guildId) {
+        const instance = Client.client.getInstance(guildId);
+
+        const legendContent = `**__Tracker Legend__**
+
+**Status Icons (Discord/Steam)**
+🟢 Online
+🟡 Away/Idle
+🚫 Busy/DND
+🟠 Snooze
+🔴 Offline
+🔵 On Another Server
+❔ N/A (no ID linked)
+
+**Toggle Features** *(green = enabled, red = disabled)*
+• **In-Game Notifications** - Sends alerts to in-game team chat
+• **Mention @everyone** - Pings @everyone when players connect/disconnect
+• **Multi-Server Alerts** - Notifies when tracked players join other servers
+
+**Commands**
+• \`/players name <status> [name]\` - Search players by name
+• \`/players playerid <id>\` - Look up player by Battlemetrics ID
+• \`/reset trackers\` - Reset all trackers in the channel
+• In-game: \`!tracker [name]\` - Show online status of tracked players`;
+
+        const content = { content: legendContent };
+
+        let message = instance.trackerLegendMessageId !== null ?
+            await DiscordTools.getMessageById(guildId, instance.channelId.trackers, instance.trackerLegendMessageId) : undefined;
+
+        if (message !== undefined) {
+            await Client.client.messageEdit(message, content);
+        } else {
+            const channel = await DiscordTools.getTextChannelById(guildId, instance.channelId.trackers);
+            if (channel) {
+                message = await Client.client.messageSend(channel, content);
+                instance.trackerLegendMessageId = message.id;
+                Client.client.setInstance(guildId, instance);
+            }
+        }
+    },
+
     sendSmartSwitchMessage: async function (guildId, serverId, entityId, interaction = null) {
         const instance = Client.client.getInstance(guildId);
         const entity = instance.serverList[serverId].switches[entityId];
