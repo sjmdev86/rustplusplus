@@ -27,8 +27,27 @@ const DiscordButtons = require('./discordButtons.js');
 const DiscordEmbeds = require('./discordEmbeds.js');
 const DiscordSelectMenus = require('./discordSelectMenus.js');
 const DiscordTools = require('./discordTools.js');
+const Battlemetrics = require('../structures/Battlemetrics.js');
 const Scrape = require('../util/scrape.js');
 const SteamApi = require('../util/steamApi.js');
+
+/**
+ * Get Discord presence status for a user
+ * @param {string} guildId - The guild ID
+ * @param {string} discordId - The Discord user ID
+ * @returns {Promise<string|null>} - The presence status or null
+ */
+async function getDiscordPresence(guildId, discordId) {
+    try {
+        const guild = await Client.client.guilds.fetch(guildId);
+        if (!guild) return null;
+        const member = await guild.members.fetch({ user: discordId, withPresences: true });
+        if (!member || !member.presence) return 'offline';
+        return member.presence.status || 'offline';
+    } catch (e) {
+        return null;
+    }
+}
 
 module.exports = {
     sendMessage: async function (guildId, content, messageId, channelId, interaction = null) {
@@ -74,46 +93,115 @@ module.exports = {
         }
     },
 
-    sendTrackerMessage: async function (guildId, trackerId, interaction = null) {
+    sendTrackerMessage: async function (guildId, trackerId, interaction = null, refreshData = true) {
         const instance = Client.client.getInstance(guildId);
         const tracker = instance.trackers[trackerId];
         const battlemetricsId = tracker.battlemetricsId;
         const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
 
-        /* Fetch Steam status for all players */
         let steamStatusData = {};
-        const steamIds = tracker.players.filter(p => p.steamId).map(p => p.steamId);
-        if (steamIds.length > 0) {
-            try {
-                steamStatusData = await SteamApi.getPlayerSummaries(steamIds);
-            } catch (e) {
-                /* Ignore Steam API errors */
-            }
-        }
-
-        /* Fetch player current server data */
+        let discordStatusData = {};
         let playerServerData = {};
-        if (bmInstance) {
+        let lastSessionData = {};
+
+        if (refreshData) {
+            /* Defer interaction since API calls will take time */
+            if (interaction) {
+                try {
+                    await interaction.deferUpdate();
+                } catch (e) {
+                    /* Interaction may already be deferred */
+                }
+            }
+
+            /* Fetch Steam status for all players */
+            const steamIds = tracker.players.filter(p => p.steamId).map(p => p.steamId);
+            if (steamIds.length > 0) {
+                try {
+                    steamStatusData = await SteamApi.getPlayerSummaries(steamIds);
+                } catch (e) {
+                    /* Ignore Steam API errors */
+                }
+            }
+
+            /* Fetch Discord status for players with discordId */
+            for (const player of tracker.players) {
+                /* Discord IDs are numeric strings - skip invalid ones */
+                if (player.discordId && /^\d+$/.test(player.discordId)) {
+                    try {
+                        const status = await getDiscordPresence(guildId, player.discordId);
+                        if (status) {
+                            discordStatusData[player.discordId] = status;
+                        }
+                    } catch (e) {
+                        /* Ignore Discord API errors */
+                    }
+                }
+            }
+
+            /* Fetch player current server data, last session data, and update names */
+            let namesUpdated = false;
             for (const player of tracker.players) {
                 if (!player.playerId) continue;
                 try {
-                    const serverInfo = await bmInstance.getPlayerCurrentServer(player.playerId);
-                    if (serverInfo) {
-                        playerServerData[player.playerId] = serverInfo;
+                    /* Update player name from Battlemetrics */
+                    const currentName = await Battlemetrics.getPlayerName(player.playerId);
+                    if (currentName && currentName !== player.name) {
+                        player.name = currentName;
+                        namesUpdated = true;
+                    }
+
+                    /* Fetch server status if bmInstance exists */
+                    if (bmInstance) {
+                        const serverInfo = await bmInstance.getPlayerCurrentServer(player.playerId);
+                        if (serverInfo) {
+                            playerServerData[player.playerId] = serverInfo;
+                        } else {
+                            /* Player is offline, fetch last session on tracked server */
+                            const lastSessionSeconds = await bmInstance.getPlayerLastSessionOnServer(player.playerId);
+                            if (lastSessionSeconds !== null) {
+                                lastSessionData[player.playerId] = lastSessionSeconds;
+                            }
+                        }
                     }
                 } catch (e) {
-                    /* Ignore errors */
+                    /* Ignore BM API errors */
                 }
+            }
+
+            /* Save updated names if any changed */
+            if (namesUpdated) {
+                Client.client.setInstance(guildId, instance);
             }
         }
 
         const content = {
-            embeds: [DiscordEmbeds.getTrackerEmbed(guildId, trackerId, playerServerData, steamStatusData)],
+            embeds: [DiscordEmbeds.getTrackerEmbed(guildId, trackerId, playerServerData, steamStatusData, discordStatusData, lastSessionData)],
             components: DiscordButtons.getTrackerButtons(guildId, trackerId)
         }
 
-        const message = await module.exports.sendMessage(guildId, content, tracker.messageId,
-            instance.channelId.trackers, interaction);
+        let message;
+        if (interaction) {
+            if (refreshData) {
+                /* After deferUpdate(), must use editReply() */
+                try {
+                    await interaction.editReply(content);
+                } catch (e) {
+                    /* Fallback to regular message edit */
+                    message = tracker.messageId !== null ?
+                        await DiscordTools.getMessageById(guildId, instance.channelId.trackers, tracker.messageId) : undefined;
+                    if (message) {
+                        await Client.client.messageEdit(message, content);
+                    }
+                }
+            } else {
+                /* No defer, use update() directly */
+                await Client.client.interactionUpdate(interaction, content);
+            }
+        } else {
+            message = await module.exports.sendMessage(guildId, content, tracker.messageId,
+                instance.channelId.trackers, null);
+        }
 
         if (!interaction) {
             instance.trackers[trackerId].messageId = message.id;

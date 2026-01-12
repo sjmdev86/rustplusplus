@@ -26,6 +26,7 @@ const DiscordTools = require('../discordTools/discordTools.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 const DiscordButtons = require('../discordTools/discordButtons.js');
 const DiscordModals = require('../discordTools/discordModals.js');
+const DiscordSelectMenus = require('../discordTools/discordSelectMenus.js');
 
 module.exports = async (client, interaction) => {
     const instance = client.getInstance(interaction.guildId);
@@ -1062,7 +1063,8 @@ module.exports = async (client, interaction) => {
             value: `${tracker.everyone}`
         }));
 
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        /* Respond immediately - just a toggle */
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
     }
     else if (interaction.customId.startsWith('TrackerAllServers')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerAllServers', ''));
@@ -1081,7 +1083,8 @@ module.exports = async (client, interaction) => {
             value: `${tracker.allServersNotify}`
         }));
 
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        /* Respond immediately - just a toggle */
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
     }
     else if (interaction.customId.startsWith('TrackerUpdate')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerUpdate', ''));
@@ -1095,6 +1098,27 @@ module.exports = async (client, interaction) => {
         // TODO! Remove name change icon from status
 
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+    }
+    else if (interaction.customId.startsWith('TrackerEditPlayer')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerEditPlayer', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.message.delete();
+            return;
+        }
+
+        if (tracker.players.length === 0) {
+            await interaction.reply({ content: 'No players in this tracker to edit.', ephemeral: true });
+            return;
+        }
+
+        const selectMenu = DiscordSelectMenus.getTrackerPlayerSelectMenu(guildId, ids.trackerId);
+        await interaction.reply({
+            content: 'Select a player to edit:',
+            components: [selectMenu],
+            ephemeral: true
+        });
     }
     else if (interaction.customId.startsWith('TrackerEdit')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerEdit', ''));
@@ -1164,13 +1188,13 @@ module.exports = async (client, interaction) => {
         tracker.inGame = !tracker.inGame;
         client.setInstance(guildId, instance);
 
-
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
             id: `${verifyId}`,
             value: `${tracker.inGame}`
         }));
 
-        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        /* Respond immediately - just a toggle */
+        await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction, false);
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userButtonInteractionSuccess', {

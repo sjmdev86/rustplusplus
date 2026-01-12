@@ -319,4 +319,37 @@ module.exports = {
                     }]
             }));
     },
+
+    getTrackerPlayerSelectMenu: function (guildId, trackerId) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const identifier = JSON.stringify({ "trackerId": trackerId });
+
+        const options = [];
+        for (let i = 0; i < tracker.players.length && i < 25; i++) {
+            const player = tracker.players[i];
+            const playerId = player.steamId || player.playerId || 'unknown';
+            const playerName = player.name || 'Unknown';
+            options.push({
+                label: playerName.substring(0, 100),
+                description: `ID: ${playerId}`.substring(0, 100),
+                value: `${i}` /* Use index as value */
+            });
+        }
+
+        if (options.length === 0) {
+            options.push({
+                label: 'No players',
+                description: 'No players in this tracker',
+                value: 'none'
+            });
+        }
+
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getSelectMenu({
+                customId: `TrackerPlayerSelect${identifier}`,
+                placeholder: 'Select a player to edit',
+                options: options
+            }));
+    },
 }

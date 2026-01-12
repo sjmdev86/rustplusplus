@@ -420,6 +420,11 @@ module.exports = {
                     style: SUCCESS
                 }),
                 module.exports.getButton({
+                    customId: `TrackerEditPlayer${identifier}`,
+                    label: 'EDIT PLAYER',
+                    style: PRIMARY
+                }),
+                module.exports.getButton({
                     customId: `TrackerRemovePlayer${identifier}`,
                     label: Client.client.intlGet(guildId, 'removePlayerCap'),
                     style: DANGER

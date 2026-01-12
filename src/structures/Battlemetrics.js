@@ -840,13 +840,11 @@ class Battlemetrics {
                 const serverId = session.relationships?.server?.data?.id;
                 if (!serverId) return null;
 
-                /* Calculate online time */
+                /* Calculate online time in seconds */
                 const startTime = new Date(session.attributes.start);
                 const now = Date.now();
                 const diffMs = now - startTime;
-                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
-                const onlineTime = `${diffHours.toString().padStart(2, '0')}:${diffMinutes.toString().padStart(2, '0')}`;
+                const onlineSeconds = Math.floor(diffMs / 1000);
 
                 /* Find server details in included array */
                 if (response.data.included) {
@@ -857,15 +855,79 @@ class Battlemetrics {
                         return {
                             id: serverId,
                             name: server.attributes?.name || 'Unknown Server',
-                            onlineTime: onlineTime
+                            onlineSeconds: onlineSeconds
                         };
                     }
                 }
 
-                return { id: serverId, name: 'Unknown Server', onlineTime: onlineTime };
+                return { id: serverId, name: 'Unknown Server', onlineSeconds: onlineSeconds };
             }
 
             return null;
+        }
+        catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     *  Get the last session end time for a player on this server via Battlemetrics API.
+     *  @param {string} playerId The Battlemetrics player ID.
+     *  @return {number|null} Seconds since last session ended, or null if not found.
+     */
+    async getPlayerLastSessionOnServer(playerId) {
+        try {
+            /* Query player sessions filtered by this server */
+            const response = await Axios.get(
+                `https://api.battlemetrics.com/players/${playerId}/relationships/sessions`,
+                {
+                    params: {
+                        'filter[servers]': this.id,
+                        'page[size]': 1
+                    },
+                    timeout: 10000
+                }
+            );
+
+            if (response.status !== 200 || !response.data?.data?.length) {
+                return null;
+            }
+
+            const session = response.data.data[0];
+
+            /* If session has a stop time, calculate time since then */
+            if (session.attributes?.stop) {
+                const stopTime = new Date(session.attributes.stop);
+                const now = Date.now();
+                const diffMs = now - stopTime;
+                return Math.floor(diffMs / 1000);
+            }
+
+            /* Session is still active (no stop time) - player is online */
+            return null;
+        }
+        catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     *  Get player name by Battlemetrics player ID.
+     *  @param {string} playerId The Battlemetrics player ID.
+     *  @return {string|null} Player name or null if not found.
+     */
+    static async getPlayerName(playerId) {
+        try {
+            const response = await Axios.get(
+                `https://api.battlemetrics.com/players/${playerId}`,
+                { timeout: 10000 }
+            );
+
+            if (response.status !== 200 || !response.data?.data) {
+                return null;
+            }
+
+            return response.data.data.attributes?.name || null;
         }
         catch (e) {
             return null;

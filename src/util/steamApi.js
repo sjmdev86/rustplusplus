@@ -11,13 +11,13 @@ const STEAM_API_BASE = 'https://api.steampowered.com';
 
 /* Steam persona states */
 const PERSONA_STATES = {
-    0: { name: 'Offline', emoji: '⚪' },
+    0: { name: 'Offline', emoji: '🔴' },
     1: { name: 'Online', emoji: '🟢' },
-    2: { name: 'Busy', emoji: '🔴' },
+    2: { name: 'Busy', emoji: '🚫' },
     3: { name: 'Away', emoji: '🟡' },
     4: { name: 'Snooze', emoji: '🟠' },
-    5: { name: 'Looking to Trade', emoji: '🔵' },
-    6: { name: 'Looking to Play', emoji: '🟣' }
+    5: { name: 'Looking to Trade', emoji: '🟢' },
+    6: { name: 'Looking to Play', emoji: '🟢' }
 };
 
 /**

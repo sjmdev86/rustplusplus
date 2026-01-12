@@ -21,6 +21,7 @@
 const Discord = require('discord.js');
 
 const DiscordMessages = require('../discordTools/discordMessages.js');
+const DiscordModals = require('../discordTools/discordModals.js');
 const DiscordSelectMenus = require('../discordTools/discordSelectMenus.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 
@@ -149,6 +150,19 @@ module.exports = async (client, interaction) => {
         }));
 
         DiscordMessages.sendSmartSwitchMessage(guildId, ids.serverId, ids.entityId, interaction);
+    }
+    else if (interaction.customId.startsWith('TrackerPlayerSelect')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerPlayerSelect', ''));
+        const tracker = instance.trackers[ids.trackerId];
+        const playerIndex = interaction.values[0];
+
+        if (!tracker || playerIndex === 'none') {
+            interaction.deferUpdate();
+            return;
+        }
+
+        const modal = DiscordModals.getTrackerEditPlayerModal(guildId, ids.trackerId, parseInt(playerIndex));
+        await interaction.showModal(modal);
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userSelectMenuInteractionSuccess', {

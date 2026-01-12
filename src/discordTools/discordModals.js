@@ -332,6 +332,14 @@ module.exports = {
                     `${Client.client.intlGet(guildId, 'battlemetricsId')}`,
                 value: '',
                 style: Discord.TextInputStyle.Short
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerAddPlayerDiscordId',
+                label: 'Discord ID (optional)',
+                value: '',
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
             }))
         );
 
@@ -355,6 +363,48 @@ module.exports = {
                     `${Client.client.intlGet(guildId, 'battlemetricsId')}`,
                 value: '',
                 style: Discord.TextInputStyle.Short
+            }))
+        );
+
+        return modal;
+    },
+
+    getTrackerEditPlayerModal(guildId, trackerId, playerIndex) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const player = tracker.players[playerIndex];
+        const identifier = JSON.stringify({ "trackerId": trackerId, "playerIndex": playerIndex });
+
+        const playerName = player.name || 'Unknown';
+        const modal = module.exports.getModal({
+            customId: `TrackerEditPlayer${identifier}`,
+            title: `Edit: ${playerName}`.slice(0, 45)
+        });
+
+        modal.addComponents(
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerEditPlayerSteamId',
+                label: 'Steam ID (blank = clear)',
+                value: player.steamId || '',
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerEditPlayerBmId',
+                label: 'Battlemetrics ID (blank = clear)',
+                value: player.playerId || '',
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerEditPlayerDiscordId',
+                label: 'Discord ID (blank = clear)',
+                value: player.discordId || '',
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
             }))
         );
 
