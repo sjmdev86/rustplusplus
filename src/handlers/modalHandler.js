@@ -31,7 +31,7 @@ module.exports = async (client, interaction) => {
     const guildId = interaction.guildId;
 
     const verifyId = Math.floor(100000 + Math.random() * 900000);
-    client.logInteraction(interaction, verifyId, 'userModal');
+    await client.logInteraction(interaction, verifyId, 'userModal');
 
     if (instance.blacklist['discordIds'].includes(interaction.user.id) &&
         !interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
@@ -265,9 +265,7 @@ module.exports = async (client, interaction) => {
         const tracker = instance.trackers[ids.trackerId];
         const trackerName = interaction.fields.getTextInputValue('TrackerName');
         const trackerBattlemetricsId = interaction.fields.getTextInputValue('TrackerBattlemetricsId');
-        const trackerBaseLocation = interaction.fields.getTextInputValue('TrackerBaseLocation');
         const trackerClanTag = interaction.fields.getTextInputValue('TrackerClanTag');
-        const trackerNotes = interaction.fields.getTextInputValue('TrackerNotes');
 
         if (!tracker) {
             interaction.deferUpdate();
@@ -275,8 +273,6 @@ module.exports = async (client, interaction) => {
         }
 
         tracker.name = trackerName;
-        tracker.notes = trackerNotes;
-        tracker.baseLocation = trackerBaseLocation;
         if (trackerClanTag !== tracker.clanTag) {
             tracker.clanTag = trackerClanTag;
             client.battlemetricsIntervalCounter = 0;

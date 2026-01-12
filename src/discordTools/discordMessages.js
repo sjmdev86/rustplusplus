@@ -28,6 +28,7 @@ const DiscordEmbeds = require('./discordEmbeds.js');
 const DiscordSelectMenus = require('./discordSelectMenus.js');
 const DiscordTools = require('./discordTools.js');
 const Scrape = require('../util/scrape.js');
+const SteamApi = require('../util/steamApi.js');
 
 module.exports = {
     sendMessage: async function (guildId, content, messageId, channelId, interaction = null) {
@@ -43,7 +44,7 @@ module.exports = {
             return await Client.client.messageEdit(message, content);
         }
         else {
-            const channel = DiscordTools.getTextChannelById(guildId, channelId);
+            const channel = await DiscordTools.getTextChannelById(guildId, channelId);
 
             if (!channel) {
                 Client.client.log(Client.client.intlGet(null, 'errorCap'),
@@ -76,9 +77,38 @@ module.exports = {
     sendTrackerMessage: async function (guildId, trackerId, interaction = null) {
         const instance = Client.client.getInstance(guildId);
         const tracker = instance.trackers[trackerId];
+        const battlemetricsId = tracker.battlemetricsId;
+        const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
+
+        /* Fetch Steam status for all players */
+        let steamStatusData = {};
+        const steamIds = tracker.players.filter(p => p.steamId).map(p => p.steamId);
+        if (steamIds.length > 0) {
+            try {
+                steamStatusData = await SteamApi.getPlayerSummaries(steamIds);
+            } catch (e) {
+                /* Ignore Steam API errors */
+            }
+        }
+
+        /* Fetch player current server data */
+        let playerServerData = {};
+        if (bmInstance) {
+            for (const player of tracker.players) {
+                if (!player.playerId) continue;
+                try {
+                    const serverInfo = await bmInstance.getPlayerCurrentServer(player.playerId);
+                    if (serverInfo) {
+                        playerServerData[player.playerId] = serverInfo;
+                    }
+                } catch (e) {
+                    /* Ignore errors */
+                }
+            }
+        }
 
         const content = {
-            embeds: [DiscordEmbeds.getTrackerEmbed(guildId, trackerId)],
+            embeds: [DiscordEmbeds.getTrackerEmbed(guildId, trackerId, playerServerData, steamStatusData)],
             components: DiscordButtons.getTrackerButtons(guildId, trackerId)
         }
 

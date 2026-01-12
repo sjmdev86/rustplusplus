@@ -18,7 +18,7 @@
 
 */
 
-const DiscordTools = require('../discordTools/discordTools.js');
+const DiscordTools = require('./discordTools.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 
 module.exports = async (client, guild, category) => {
@@ -42,7 +42,7 @@ async function addTextChannel(name, idName, client, guild, parent, permissionWri
 
     let channel = undefined;
     if (instance.channelId[idName] !== null) {
-        channel = DiscordTools.getTextChannelById(guild.id, instance.channelId[idName]);
+        channel = await DiscordTools.getTextChannelById(guild.id, instance.channelId[idName]);
     }
     if (channel === undefined) {
         channel = await DiscordTools.addTextChannel(guild.id, name);
@@ -68,18 +68,20 @@ async function addTextChannel(name, idName, client, guild, parent, permissionWri
         }
     }
 
-    const perms = PermissionHandler.getPermissionsReset(client, guild, permissionWrite);
+    // Commented out to preserve custom channel permissions set by admins
+    // const perms = PermissionHandler.getPermissionsReset(client, guild, permissionWrite);
 
-    try {
-        await channel.permissionOverwrites.set(perms);
-    }
-    catch (e) {
-        /* Ignore */
-    }
+    // try {
+    //     await channel.permissionOverwrites.set(perms);
+    // }
+    // catch (e) {
+    //     /* Ignore */
+    // }
 
     /* Currently, this halts the entire application... Too lazy to fix...
        It is possible to just remove the channels and let the bot recreate them with correct name language */
     //channel.setName(name);
 
-    channel.lockPermissions();
+    // Commented out to preserve custom channel permissions set by admins
+    // channel.lockPermissions();
 }

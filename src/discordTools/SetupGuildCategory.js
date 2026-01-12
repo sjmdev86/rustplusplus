@@ -18,7 +18,7 @@
 
 */
 
-const DiscordTools = require('../discordTools/discordTools.js');
+const DiscordTools = require('./discordTools.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 
 module.exports = async (client, guild) => {
@@ -26,7 +26,7 @@ module.exports = async (client, guild) => {
 
     let category = undefined;
     if (instance.channelId.category !== null) {
-        category = DiscordTools.getCategoryById(guild.id, instance.channelId.category);
+        category = await DiscordTools.getCategoryById(guild.id, instance.channelId.category);
     }
     if (category === undefined) {
         category = await DiscordTools.addCategory(guild.id, 'rustplusplus');
@@ -34,14 +34,15 @@ module.exports = async (client, guild) => {
         client.setInstance(guild.id, instance);
     }
 
-    const perms = PermissionHandler.getPermissionsReset(client, guild, false);
+    // Commented out to preserve custom channel permissions set by admins
+    // const perms = PermissionHandler.getPermissionsReset(client, guild, false);
 
-    try {
-        await category.permissionOverwrites.set(perms);
-    }
-    catch (e) {
-        /* Ignore */
-    }
+    // try {
+    //     await category.permissionOverwrites.set(perms);
+    // }
+    // catch (e) {
+    //     /* Ignore */
+    // }
 
     return category;
 };

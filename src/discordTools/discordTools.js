@@ -66,13 +66,16 @@ module.exports = {
         return undefined;
     },
 
-    getTextChannelById: function (guildId, channelId) {
+    getTextChannelById: async function (guildId, channelId) {
         const guild = module.exports.getGuild(guildId);
 
         if (guild) {
             let channel = undefined;
             try {
                 channel = guild.channels.cache.get(channelId);
+                if (!channel) {
+                    channel = await guild.channels.fetch(channelId);
+                }
             }
             catch (e) {
                 Client.client.log(Client.client.intlGet(null, 'errorCap'),
@@ -106,13 +109,16 @@ module.exports = {
         return undefined;
     },
 
-    getCategoryById: function (guildId, categoryId) {
+    getCategoryById: async function (guildId, categoryId) {
         const guild = module.exports.getGuild(guildId);
 
         if (guild) {
             let category = undefined;
             try {
                 category = guild.channels.cache.get(categoryId);
+                if (!category) {
+                    category = await guild.channels.fetch(categoryId);
+                }
             }
             catch (e) {
                 Client.client.log(Client.client.intlGet(null, 'errorCap'),
@@ -150,7 +156,7 @@ module.exports = {
         const guild = module.exports.getGuild(guildId);
 
         if (guild) {
-            const channel = module.exports.getTextChannelById(guildId, channelId);
+            const channel = await module.exports.getTextChannelById(guildId, channelId);
 
             if (channel) {
                 try {
@@ -204,7 +210,7 @@ module.exports = {
     },
 
     removeCategory: async function (guildId, categoryId) {
-        const category = module.exports.getCategoryById(guildId, categoryId);
+        const category = await module.exports.getCategoryById(guildId, categoryId);
 
         try {
             await category.delete();
@@ -240,7 +246,7 @@ module.exports = {
     },
 
     removeTextChannel: async function (guildId, channelId) {
-        const channel = module.exports.getTextChannelById(guildId, channelId);
+        const channel = await module.exports.getTextChannelById(guildId, channelId);
 
         try {
             await channel.delete();
@@ -254,7 +260,7 @@ module.exports = {
     },
 
     clearTextChannel: async function (guildId, channelId, numberOfMessages) {
-        const channel = module.exports.getTextChannelById(guildId, channelId);
+        const channel = await module.exports.getTextChannelById(guildId, channelId);
 
         if (channel) {
             for (let messagesLeft = numberOfMessages; messagesLeft > 0; messagesLeft -= 100) {

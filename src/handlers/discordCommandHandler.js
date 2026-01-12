@@ -19,7 +19,7 @@
 */
 
 const DiscordMessages = require('../discordTools/discordMessages.js');
-const DiscordTools = require('../discordTools/discordTools');
+const DiscordTools = require('../discordTools/discordTools.js');
 
 module.exports = {
     discordCommandHandler: async function (rustplus, client, message) {
@@ -79,10 +79,6 @@ module.exports = {
         else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxEvents')}`) ||
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxEvents')}`)) {
             response = rustplus.getCommandEvents(command);
-        }
-        else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxForce')}` ||
-            commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxForce')}`) {
-            response = rustplus.getCommandForce();
         }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxHeli')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxHeli')}`) {
@@ -218,7 +214,7 @@ module.exports = {
         }
 
         const guild = DiscordTools.getGuild(message.guild.id);
-        const channel = DiscordTools.getTextChannelById(guild.id, message.channelId);
+        const channel = await DiscordTools.getTextChannelById(guild.id, message.channelId);
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, `logDiscordCommand`, {
             guild: `${guild.name} (${guild.id})`,
             channel: `${channel.name} (${channel.id})`,

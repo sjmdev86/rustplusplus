@@ -30,7 +30,7 @@ module.exports = async (client, interaction) => {
     const rustplus = client.rustplusInstances[guildId];
 
     const verifyId = Math.floor(100000 + Math.random() * 900000);
-    client.logInteraction(interaction, verifyId, 'userSelectMenu');
+    await client.logInteraction(interaction, verifyId, 'userSelectMenu');
 
     if (instance.blacklist['discordIds'].includes(interaction.user.id) &&
         !interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
@@ -61,7 +61,7 @@ module.exports = async (client, interaction) => {
         });
 
         const guild = DiscordTools.getGuild(guildId);
-        await require('../discordTools/RegisterSlashCommands')(client, guild);
+        await require('../discordTools/RegisterSlashCommands.js')(client, guild);
     }
     else if (interaction.customId === 'Prefix') {
         instance.generalSettings.prefix = interaction.values[0];

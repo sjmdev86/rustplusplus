@@ -23,7 +23,7 @@ const Discord = require('discord.js');
 const Fs = require('fs');
 const Path = require('path');
 
-const Battlemetrics = require('../structures/Battlemetrics');
+const Battlemetrics = require('./Battlemetrics');
 const Cctv = require('./Cctv');
 const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
@@ -32,8 +32,8 @@ const InstanceUtils = require('../util/instanceUtils.js');
 const Items = require('./Items');
 const Logger = require('./Logger.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
-const RustLabs = require('../structures/RustLabs');
-const RustPlus = require('../structures/RustPlus');
+const RustLabs = require('./RustLabs');
+const RustPlus = require('./RustPlus');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {
@@ -192,8 +192,8 @@ class DiscordBot extends Discord.Client {
         this.logger.log(title, text, level);
     }
 
-    logInteraction(interaction, verifyId, type) {
-        const channel = DiscordTools.getTextChannelById(interaction.guildId, interaction.channelId);
+    async logInteraction(interaction, verifyId, type) {
+        const channel = await DiscordTools.getTextChannelById(interaction.guildId, interaction.channelId);
         const args = new Object();
         args['guild'] = `${interaction.member.guild.name} (${interaction.member.guild.id})`;
         args['channel'] = `${channel.name} (${interaction.channelId})`;
@@ -223,7 +223,8 @@ class DiscordBot extends Discord.Client {
             }
         }
         else {
-            await PermissionHandler.resetPermissionsAllChannels(this, guild);
+            // Commented out to preserve custom channel permissions set by admins
+            // await PermissionHandler.resetPermissionsAllChannels(this, guild);
         }
 
         require('../util/FcmListener')(this, guild);

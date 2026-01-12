@@ -815,6 +815,51 @@ class Battlemetrics {
 
         return this.#formatTime(this.players[playerId]['logoutDate']);
     }
+
+    /**
+     *  Get the current server a player is on via Battlemetrics API.
+     *  @param {string} playerId The Battlemetrics player ID.
+     *  @return {object|null} Object with server name and id, or null if not found/offline.
+     */
+    async getPlayerCurrentServer(playerId) {
+        try {
+            const response = await Axios.get(
+                `https://api.battlemetrics.com/players/${playerId}?include=server`,
+                { timeout: 10000 }
+            );
+
+            if (response.status !== 200 || !response.data) {
+                return null;
+            }
+
+            const data = response.data;
+
+            /* Check if player has a current server in relationships */
+            if (data.data?.relationships?.server?.data?.id) {
+                const serverId = data.data.relationships.server.data.id;
+
+                /* Find server details in included array */
+                if (data.included) {
+                    const server = data.included.find(
+                        item => item.type === 'server' && item.id === serverId
+                    );
+                    if (server) {
+                        return {
+                            id: serverId,
+                            name: server.attributes?.name || 'Unknown Server'
+                        };
+                    }
+                }
+
+                return { id: serverId, name: 'Unknown Server' };
+            }
+
+            return null;
+        }
+        catch (e) {
+            return null;
+        }
+    }
 }
 
 module.exports = Battlemetrics;

@@ -29,7 +29,7 @@ const DiscordTools = require('./discordTools.js');
 
 module.exports = async (client, guild, forced = false) => {
     const instance = client.getInstance(guild.id);
-    const channel = DiscordTools.getTextChannelById(guild.id, instance.channelId.settings);
+    const channel = await DiscordTools.getTextChannelById(guild.id, instance.channelId.settings);
 
     if (!channel) {
         client.log(client.intlGet(null, 'errorCap'), 'SetupSettingsMenu: ' +
