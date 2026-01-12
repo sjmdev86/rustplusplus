@@ -819,7 +819,7 @@ class Battlemetrics {
     /**
      *  Get the current server a player is on via Battlemetrics API.
      *  @param {string} playerId The Battlemetrics player ID.
-     *  @return {object|null} Object with server name and id, or null if not found/offline.
+     *  @return {object|null} Object with server name, id, and online time, or null if not found/offline.
      */
     async getPlayerCurrentServer(playerId) {
         try {
@@ -840,6 +840,14 @@ class Battlemetrics {
                 const serverId = session.relationships?.server?.data?.id;
                 if (!serverId) return null;
 
+                /* Calculate online time */
+                const startTime = new Date(session.attributes.start);
+                const now = Date.now();
+                const diffMs = now - startTime;
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+                const onlineTime = `${diffHours.toString().padStart(2, '0')}:${diffMinutes.toString().padStart(2, '0')}`;
+
                 /* Find server details in included array */
                 if (response.data.included) {
                     const server = response.data.included.find(
@@ -848,12 +856,13 @@ class Battlemetrics {
                     if (server) {
                         return {
                             id: serverId,
-                            name: server.attributes?.name || 'Unknown Server'
+                            name: server.attributes?.name || 'Unknown Server',
+                            onlineTime: onlineTime
                         };
                     }
                 }
 
-                return { id: serverId, name: 'Unknown Server' };
+                return { id: serverId, name: 'Unknown Server', onlineTime: onlineTime };
             }
 
             return null;

@@ -198,10 +198,11 @@ module.exports = {
                 else {
                     /* Offline on tracker server - check if on another server */
                     if (currentServer && currentServer.name) {
-                        /* On another server - don't show offline time, it's not relevant */
+                        /* On another server - show their online time on that server */
                         const serverName = currentServer.name.length > serverMaxLength ?
                             currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
-                        statusServer += `🟡 ${serverName}\n`;
+                        const otherServerTime = currentServer.onlineTime || '-';
+                        statusServer += `🟡 ${otherServerTime} ${serverName}\n`;
                     }
                     else {
                         /* Offline - show time since last seen */
@@ -216,7 +217,8 @@ module.exports = {
                 if (currentServer && currentServer.name) {
                     const serverName = currentServer.name.length > serverMaxLength ?
                         currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
-                    statusServer += `🟡 - ${serverName}\n`;
+                    const otherServerTime = currentServer.onlineTime || '-';
+                    statusServer += `🟡 ${otherServerTime} ${serverName}\n`;
                 }
                 else {
                     statusServer += `🔴 -\n`;
