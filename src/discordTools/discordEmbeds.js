@@ -197,17 +197,16 @@ module.exports = {
                 }
                 else {
                     /* Offline on tracker server - check if on another server */
-                    const time = bmInstance.getOfflineTime(player.playerId);
-                    timeStr = time !== null ? time[1] : '-';
-
                     if (currentServer && currentServer.name) {
-                        /* On another server */
+                        /* On another server - don't show offline time, it's not relevant */
                         const serverName = currentServer.name.length > serverMaxLength ?
                             currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
-                        statusServer += `🟡 ${timeStr} ${serverName}\n`;
+                        statusServer += `🟡 ${serverName}\n`;
                     }
                     else {
-                        /* Offline */
+                        /* Offline - show time since last seen */
+                        const time = bmInstance.getOfflineTime(player.playerId);
+                        timeStr = time !== null ? time[1] : '-';
                         statusServer += `🔴 ${timeStr}\n`;
                     }
                 }
