@@ -823,24 +823,26 @@ class Battlemetrics {
      */
     async getPlayerCurrentServer(playerId) {
         try {
+            /* Query the player's most recent session */
             const response = await Axios.get(
-                `https://api.battlemetrics.com/players/${playerId}?include=server`,
+                `https://api.battlemetrics.com/players/${playerId}/relationships/sessions?page[size]=1&include=server`,
                 { timeout: 10000 }
             );
 
-            if (response.status !== 200 || !response.data) {
+            if (response.status !== 200 || !response.data?.data?.length) {
                 return null;
             }
 
-            const data = response.data;
+            const session = response.data.data[0];
 
-            /* Check if player has a current server in relationships */
-            if (data.data?.relationships?.server?.data?.id) {
-                const serverId = data.data.relationships.server.data.id;
+            /* Check if session is currently active (has start but no stop) */
+            if (session.attributes?.start && !session.attributes?.stop) {
+                const serverId = session.relationships?.server?.data?.id;
+                if (!serverId) return null;
 
                 /* Find server details in included array */
-                if (data.included) {
-                    const server = data.included.find(
+                if (response.data.included) {
+                    const server = response.data.included.find(
                         item => item.type === 'server' && item.id === serverId
                     );
                     if (server) {
