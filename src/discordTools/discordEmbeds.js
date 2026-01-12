@@ -167,7 +167,7 @@ module.exports = {
             }
 
             if (player.steamId) {
-                const steamLink = `[${steamEmoji} ${player.steamId}](${Constants.STEAM_PROFILE_URL}${player.steamId})`;
+                const steamLink = `[${steamEmoji} ${player.steamId}](${Constants.STEAM_PROFILES_URL}${player.steamId})`;
                 ids = steamLink;
             } else {
                 ids = Client.client.intlGet(guildId, 'empty');
