@@ -6,9 +6,10 @@ services:
             - ./instances:/app/instances
             - ./logs:/app/logs
             - ./maps:/app/maps
+        env_file:
+            - .env
         environment:
             - RPP_DISCORD_CLIENT_ID=111....1111
             - RPP_DISCORD_TOKEN=token
-            - RPP_STEAM_API_KEY=your_steam_api_key_here
         container_name: rpp
         image: ghcr.io/alexemanuelol/rustplusplus
