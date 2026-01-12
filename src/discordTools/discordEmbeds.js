@@ -121,7 +121,7 @@ module.exports = {
 
         const successful = bmInstance && bmInstance.lastUpdateSuccessful ? true : false;
 
-        const serverName = bmInstance ? bmInstance.server_name : tracker.title;
+        const serverName = (bmInstance && bmInstance.server_name) ? bmInstance.server_name : (tracker.title || 'Unknown Server');
         const battlemetricsLink = `[${serverName}](${Constants.BATTLEMETRICS_SERVER_URL}${battlemetricsId})`;
 
         let description = `__**Server:**__ ${battlemetricsLink}\n`;
