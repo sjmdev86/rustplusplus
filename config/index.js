@@ -30,5 +30,8 @@ module.exports = {
         clientId: process.env.RPP_DISCORD_CLIENT_ID || '',
         token: process.env.RPP_DISCORD_TOKEN || '',
         needAdminPrivileges: process.env.RPP_NEED_ADMIN_PRIVILEGES || true, /* If true, only admins can delete (server, switch..), manage credentials and reset a channel */
+    },
+    steam: {
+        apiKey: process.env.RPP_STEAM_API_KEY || '', /* Steam Web API key for player status lookup */
     }
 };
