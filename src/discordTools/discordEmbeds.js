@@ -184,13 +184,16 @@ module.exports = {
             else if (bmInstance.players.hasOwnProperty(player.playerId)) {
                 /* Player is tracked on this server */
                 let timeStr = null;
-                let serverName = null;
 
                 if (bmInstance.players[player.playerId]['status']) {
                     /* Online on tracker server */
                     const time = bmInstance.getOnlineTime(player.playerId);
                     timeStr = time !== null ? time[1] : '-';
-                    statusServer += `🟢 ${timeStr}\n`;
+                    /* Show tracker's server name */
+                    const trackerServerName = bmInstance.server_name || tracker.title || 'Unknown';
+                    const displayName = trackerServerName.length > serverMaxLength ?
+                        trackerServerName.substring(0, serverMaxLength - 2) + '..' : trackerServerName;
+                    statusServer += `🟢 ${timeStr} ${displayName}\n`;
                 }
                 else {
                     /* Offline on tracker server - check if on another server */
@@ -199,7 +202,7 @@ module.exports = {
 
                     if (currentServer && currentServer.name) {
                         /* On another server */
-                        serverName = currentServer.name.length > serverMaxLength ?
+                        const serverName = currentServer.name.length > serverMaxLength ?
                             currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
                         statusServer += `🟡 ${timeStr} ${serverName}\n`;
                     }
