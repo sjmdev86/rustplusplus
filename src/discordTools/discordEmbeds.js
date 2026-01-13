@@ -134,148 +134,135 @@ module.exports = {
 
         let totalCharacters = description.length;
         let fieldIndex = 0;
-        let playerNameCol = [''], serverCol = [''], statusCol = [''];
-        let playerNameChars = 0, serverChars = 0, statusChars = 0;
+        let playerNameCol = [''], statusCol = [''];
+        let playerNameChars = 0, statusChars = 0;
 
-        for (const player of tracker.players) {
-            /* Column 1: Name (S|SID|BM) */
+        const sortedPlayers = [...tracker.players].sort((a, b) =>
+            (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
+        );
+
+        for (const player of sortedPlayers) {
+            /* Column 1: (S|SID|BM) Name */
             let nameDisplay = player.name;
-            const nameMaxLength = 12;
+            const nameMaxLength = 15;
             if (nameDisplay.length > nameMaxLength) {
                 nameDisplay = nameDisplay.substring(0, nameMaxLength - 1) + '…';
             }
 
-            let links = [];
-            if (player.steamId) {
-                links.push(`[S](https://steamcommunity.com/profiles/${player.steamId})`);
-                links.push(`[SID](${Constants.STEAM_PROFILES_URL}${player.steamId})`);
-            }
-            if (player.playerId) {
-                links.push(`[BM](${Constants.BATTLEMETRICS_PROFILE_URL}${player.playerId})`);
-            }
+            /* Build links - use plain text if no link available */
+            let sLink = player.steamId ? `[S](https://steamcommunity.com/profiles/${player.steamId})` : 'S';
+            let sidLink = player.steamId ? `[SID](${Constants.STEAM_PROFILES_URL}${player.steamId})` : 'SID';
+            let bmLink = player.playerId ? `[BM](${Constants.BATTLEMETRICS_PROFILE_URL}${player.playerId})` : 'BM';
 
-            let nameCell = nameDisplay;
-            if (links.length > 0) {
-                nameCell += ` (${links.join('|')})`;
-            }
-            nameCell += '\n';
+            let nameCell = `(${sLink}|${sidLink}|${bmLink}) ${nameDisplay}\n`;
 
-            /* Column 2: Server Status */
+            /* Column 2: Combined Status (Server/Discord/Steam + time) */
             const currentServer = playerServerData[player.playerId];
-            const serverMaxLength = 12;
-            let serverCell = '';
+
+            /* Server status */
+            let serverEmoji = '❔';
+            let timeStr = '-';
+            let isOnline = false;
 
             if (!bmInstance || !successful) {
-                serverCell = `${Constants.NOT_FOUND_EMOJI} -\n`;
+                serverEmoji = '❔';
             }
             else if (bmInstance.players.hasOwnProperty(player.playerId)) {
                 if (bmInstance.players[player.playerId]['status']) {
                     /* Online on tracker server */
+                    serverEmoji = '🟢';
+                    isOnline = true;
                     const time = bmInstance.getOnlineTime(player.playerId);
-                    const timeStr = time !== null ? Timer.secondsToFullScale(time[0], 's') : '-';
-                    const trackerServerName = bmInstance.server_name || tracker.title || 'Unknown';
-                    const displayName = trackerServerName.length > serverMaxLength ?
-                        trackerServerName.substring(0, serverMaxLength - 2) + '..' : trackerServerName;
-                    serverCell = `🟢 ${timeStr} ${displayName}\n`;
+                    timeStr = time !== null ? `Online for ${Timer.secondsToFullScale(time[0], 's')}` : '-';
                 }
                 else {
                     if (currentServer && currentServer.name) {
                         /* On another server */
-                        const srvName = currentServer.name.length > serverMaxLength ?
-                            currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
-                        const otherTime = currentServer.onlineSeconds !== undefined ?
-                            Timer.secondsToFullScale(currentServer.onlineSeconds, 's') : '-';
-                        serverCell = `🔵 ${otherTime} ${srvName}\n`;
+                        serverEmoji = '🔵';
+                        isOnline = true;
+                        timeStr = currentServer.onlineSeconds !== undefined ?
+                            `Online for ${Timer.secondsToFullScale(currentServer.onlineSeconds, 's')}` : '-';
                     }
                     else {
                         /* Offline */
-                        let timeStr = '-';
+                        serverEmoji = '🔴';
                         const time = bmInstance.getOfflineTime(player.playerId);
                         if (time !== null) {
-                            timeStr = Timer.secondsToFullScale(time[0], 's');
+                            timeStr = `Offline for ${Timer.secondsToFullScale(time[0], 's')}`;
                         } else if (lastSessionData[player.playerId] !== undefined) {
-                            timeStr = Timer.secondsToFullScale(lastSessionData[player.playerId], 's');
+                            timeStr = `Offline for ${Timer.secondsToFullScale(lastSessionData[player.playerId], 's')}`;
                         }
-                        serverCell = `🔴 ${timeStr}\n`;
                     }
                 }
             }
             else {
                 if (currentServer && currentServer.name) {
-                    const srvName = currentServer.name.length > serverMaxLength ?
-                        currentServer.name.substring(0, serverMaxLength - 2) + '..' : currentServer.name;
-                    const otherTime = currentServer.onlineSeconds !== undefined ?
-                        Timer.secondsToFullScale(currentServer.onlineSeconds, 's') : '-';
-                    serverCell = `🔵 ${otherTime} ${srvName}\n`;
+                    serverEmoji = '🔵';
+                    isOnline = true;
+                    timeStr = currentServer.onlineSeconds !== undefined ?
+                        `Online for ${Timer.secondsToFullScale(currentServer.onlineSeconds, 's')}` : '-';
                 }
                 else {
-                    /* Offline - try to get last session data */
-                    let timeStr = '-';
+                    serverEmoji = '🔴';
                     if (lastSessionData[player.playerId] !== undefined) {
-                        timeStr = Timer.secondsToFullScale(lastSessionData[player.playerId], 's');
+                        timeStr = `Offline for ${Timer.secondsToFullScale(lastSessionData[player.playerId], 's')}`;
                     }
-                    serverCell = `🔴 ${timeStr}\n`;
                 }
             }
 
-            /* Column 3: Discord/Steam Status */
             /* Discord status */
-            let discordEmoji = '❔'; /* N/A - no Discord ID set */
+            let discordEmoji = '❔';
             if (player.discordId && discordStatusData[player.discordId]) {
                 const discordStatus = discordStatusData[player.discordId];
                 switch (discordStatus) {
                     case 'online': discordEmoji = '🟢'; break;
                     case 'idle': discordEmoji = '🟡'; break;
                     case 'dnd': discordEmoji = '🚫'; break;
-                    default: discordEmoji = '🔴'; break; /* offline */
+                    default: discordEmoji = '🔴'; break;
                 }
             } else if (player.discordId) {
-                discordEmoji = '🔴'; /* Has Discord ID but offline/unknown */
+                discordEmoji = '🔴';
             }
 
             /* Steam status */
-            let steamEmoji = '❔'; /* N/A - no Steam ID set */
+            let steamEmoji = '❔';
             if (player.steamId) {
                 const steamStatus = steamStatusData[player.steamId];
                 if (steamStatus) {
                     switch (steamStatus.personaState) {
-                        case 1: steamEmoji = '🟢'; break; /* Online */
-                        case 2: steamEmoji = '🚫'; break; /* Busy */
-                        case 3: steamEmoji = '🟡'; break; /* Away */
-                        case 4: steamEmoji = '🟠'; break; /* Snooze */
-                        default: steamEmoji = '🔴'; break; /* Offline */
+                        case 1: steamEmoji = '🟢'; break;
+                        case 2: steamEmoji = '🚫'; break;
+                        case 3: steamEmoji = '🟡'; break;
+                        case 4: steamEmoji = '🟠'; break;
+                        default: steamEmoji = '🔴'; break;
                     }
                 } else {
-                    steamEmoji = '🔴'; /* Has Steam ID but status unknown/offline */
+                    steamEmoji = '🔴';
                 }
             }
 
-            const statusCell = `${discordEmoji}/${steamEmoji}\n`;
+            /* Build status cell: ServerEmoji/DiscordEmoji/SteamEmoji time */
+            let statusCell = `${serverEmoji}${discordEmoji}${steamEmoji} ${timeStr}\n`;
 
             /* Check character limits */
-            if (totalCharacters + (nameCell.length + serverCell.length + statusCell.length) >= Constants.EMBED_MAX_TOTAL_CHARACTERS) {
+            if (totalCharacters + (nameCell.length + statusCell.length) >= Constants.EMBED_MAX_TOTAL_CHARACTERS) {
                 break;
             }
 
             if ((playerNameChars + nameCell.length) > Constants.EMBED_MAX_FIELD_VALUE_CHARACTERS ||
-                (serverChars + serverCell.length) > Constants.EMBED_MAX_FIELD_VALUE_CHARACTERS ||
                 (statusChars + statusCell.length) > Constants.EMBED_MAX_FIELD_VALUE_CHARACTERS) {
                 fieldIndex += 1;
                 playerNameCol.push('');
-                serverCol.push('');
                 statusCol.push('');
                 playerNameChars = 0;
-                serverChars = 0;
                 statusChars = 0;
             }
 
             playerNameChars += nameCell.length;
-            serverChars += serverCell.length;
             statusChars += statusCell.length;
-            totalCharacters += nameCell.length + serverCell.length + statusCell.length;
+            totalCharacters += nameCell.length + statusCell.length;
 
             playerNameCol[fieldIndex] += nameCell;
-            serverCol[fieldIndex] += serverCell;
             statusCol[fieldIndex] += statusCell;
         }
 
@@ -287,13 +274,13 @@ module.exports = {
                 inline: true
             });
             fields.push({
-                name: i === 0 ? '__Server__' : '\u200B',
-                value: serverCol[i] !== '' ? serverCol[i] : Client.client.intlGet(guildId, 'empty'),
+                name: i === 0 ? '__Server/Discord/Steam__' : '\u200B',
+                value: statusCol[i] !== '' ? statusCol[i] : Client.client.intlGet(guildId, 'empty'),
                 inline: true
             });
             fields.push({
-                name: i === 0 ? '__Discord/Steam__' : '\u200B',
-                value: statusCol[i] !== '' ? statusCol[i] : Client.client.intlGet(guildId, 'empty'),
+                name: '\u200B',
+                value: '\u200B',
                 inline: true
             });
         }

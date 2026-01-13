@@ -24,6 +24,7 @@ const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordModals = require('../discordTools/discordModals.js');
 const DiscordSelectMenus = require('../discordTools/discordSelectMenus.js');
 const DiscordTools = require('../discordTools/discordTools.js');
+const SteamApi = require('../util/steamApi.js');
 
 module.exports = async (client, interaction) => {
     const instance = client.getInstance(interaction.guildId);
@@ -186,6 +187,106 @@ module.exports = async (client, interaction) => {
 
         await interaction.deferUpdate();
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, null, false);
+    }
+    else if (interaction.customId.startsWith('TrackerPlayerScrape')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerPlayerScrape', ''));
+        const tracker = instance.trackers[ids.trackerId];
+        const playerIndex = interaction.values[0];
+
+        if (!tracker || playerIndex === 'none') {
+            await interaction.deferUpdate();
+            return;
+        }
+
+        const player = tracker.players[parseInt(playerIndex)];
+        if (!player || !player.steamId) {
+            await interaction.reply({
+                content: client.intlGet(guildId, 'playerNoSteamId'),
+                ephemeral: true
+            });
+            return;
+        }
+
+        /* Defer the reply since Steam API calls may take time */
+        await interaction.deferReply({ ephemeral: true });
+
+        /* Get server player names from Battlemetrics */
+        const bmInstance = client.battlemetricsInstances[tracker.battlemetricsId];
+        const serverPlayerNames = bmInstance ? Object.values(bmInstance.players).map(p => p.name) : [];
+
+        /* Call Steam API functions */
+        const [bansResult, serverResult] = await Promise.all([
+            SteamApi.getFriendsWithBans(player.steamId),
+            SteamApi.getFriendsOnServer(player.steamId, serverPlayerNames)
+        ]);
+
+        /* Build the embed */
+        const embed = new Discord.EmbedBuilder()
+            .setTitle(client.intlGet(guildId, 'scrapeSteamResultsTitle', { name: player.name }))
+            .setColor('#2196F3')
+            .setTimestamp();
+
+        /* Check if profile is private */
+        if (bansResult.isPrivate) {
+            embed.setDescription(client.intlGet(guildId, 'steamProfilePrivate'));
+            await interaction.editReply({ embeds: [embed] });
+            return;
+        }
+
+        /* Add total friends count */
+        embed.setDescription(client.intlGet(guildId, 'totalFriendsCount', { count: bansResult.totalFriends }));
+
+        /* Friends on Server section */
+        if (serverResult.friendsOnServer.length > 0) {
+            const friendsOnServerList = serverResult.friendsOnServer
+                .slice(0, 15) /* Limit to 15 */
+                .map(f => `• ${f.name}`)
+                .join('\n');
+            embed.addFields({
+                name: client.intlGet(guildId, 'friendsOnServer', { count: serverResult.friendsOnServer.length }),
+                value: friendsOnServerList || client.intlGet(guildId, 'none'),
+                inline: false
+            });
+        } else {
+            embed.addFields({
+                name: client.intlGet(guildId, 'friendsOnServerHeader'),
+                value: client.intlGet(guildId, 'noFriendsOnServer'),
+                inline: false
+            });
+        }
+
+        /* Friends with Bans section */
+        if (bansResult.friendsWithBans.length > 0) {
+            const friendsWithBansList = bansResult.friendsWithBans
+                .slice(0, 15) /* Limit to 15 */
+                .map(f => {
+                    const bans = [];
+                    if (f.vacBans > 0) bans.push(`${f.vacBans} VAC`);
+                    if (f.gameBans > 0) bans.push(`${f.gameBans} Game`);
+                    if (f.communityBanned) bans.push('Community');
+                    const daysAgo = f.daysSinceLastBan > 0 ? ` (${f.daysSinceLastBan}d ago)` : '';
+                    return `• ${f.name}: ${bans.join(', ')}${daysAgo}`;
+                })
+                .join('\n');
+            embed.addFields({
+                name: client.intlGet(guildId, 'friendsWithBans', { count: bansResult.friendsWithBans.length }),
+                value: friendsWithBansList || client.intlGet(guildId, 'none'),
+                inline: false
+            });
+        } else {
+            embed.addFields({
+                name: client.intlGet(guildId, 'friendsWithBansHeader'),
+                value: client.intlGet(guildId, 'noFriendsWithBans'),
+                inline: false
+            });
+        }
+
+        await interaction.editReply({ embeds: [embed] });
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'selectMenuValueChange', {
+            id: `${verifyId}`,
+            value: `Scraped Steam for player: ${player.name}`
+        }));
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userSelectMenuInteractionSuccess', {

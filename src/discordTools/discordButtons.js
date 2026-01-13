@@ -441,8 +441,18 @@ module.exports = {
                 })),
             new Discord.ActionRowBuilder().addComponents(
                 module.exports.getButton({
+                    customId: `TrackerBulkAddPlayers${identifier}`,
+                    label: Client.client.intlGet(guildId, 'bulkAdd'),
+                    style: SUCCESS
+                }),
+                module.exports.getButton({
                     customId: `TrackerConfigure${identifier}`,
                     label: Client.client.intlGet(guildId, 'toggleFeatures'),
+                    style: PRIMARY
+                }),
+                module.exports.getButton({
+                    customId: `TrackerScrapeSteam${identifier}`,
+                    label: Client.client.intlGet(guildId, 'scrapeSteam'),
                     style: PRIMARY
                 }),
                 module.exports.getButton({

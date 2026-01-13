@@ -25,6 +25,7 @@ const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const Keywords = require('../util/keywords.js');
 const Scrape = require('../util/scrape.js');
+const SteamApi = require('../util/steamApi.js');
 
 module.exports = async (client, interaction) => {
     const instance = client.getInstance(interaction.guildId);
@@ -465,12 +466,13 @@ module.exports = async (client, interaction) => {
 
         /* Fetch name in background if needed */
         if (isSteamId64) {
-            /* Steam ID - scrape the name */
-            const scrapedName = await Scrape.scrapeSteamProfileName(client, id);
-            if (scrapedName) {
-                tracker.players[playerIndex].name = scrapedName;
+            /* Steam ID - fetch name via Steam API */
+            const steamSummaries = await SteamApi.getPlayerSummaries(id);
+            const summary = steamSummaries[id];
+            if (summary?.personaName) {
+                tracker.players[playerIndex].name = summary.personaName;
                 if (bmInstance) {
-                    const foundPlayerId = Object.keys(bmInstance.players).find(e => bmInstance.players[e]['name'] === scrapedName);
+                    const foundPlayerId = Object.keys(bmInstance.players).find(e => bmInstance.players[e]['name'] === summary.personaName);
                     if (foundPlayerId) tracker.players[playerIndex].playerId = foundPlayerId;
                 }
                 client.setInstance(interaction.guildId, instance);
@@ -515,6 +517,138 @@ module.exports = async (client, interaction) => {
 
         /* Respond immediately */
         await DiscordMessages.sendTrackerMessage(interaction.guildId, ids.trackerId, interaction, false);
+        return;
+    }
+    else if (interaction.customId.startsWith('TrackerBulkAddPlayers')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerBulkAddPlayers', ''));
+        const tracker = instance.trackers[ids.trackerId];
+        const input = interaction.fields.getTextInputValue('TrackerBulkAddPlayerIds');
+
+        if (!tracker) {
+            interaction.deferUpdate();
+            return;
+        }
+
+        /* Parse input - split by newlines only to preserve steamId/bmId format */
+        const lines = input.split(/[\n]+/).map(line => line.trim()).filter(line => line.length > 0);
+
+        if (lines.length === 0) {
+            interaction.deferUpdate();
+            return;
+        }
+
+        const bmInstance = client.battlemetricsInstances[tracker.battlemetricsId];
+        const addedPlayers = [];
+
+        for (const line of lines) {
+            let steamId = null;
+            let playerId = null;
+            let name = 'Loading...';
+
+            /* Check if line contains both steamId/bmId */
+            if (line.includes('/')) {
+                const parts = line.split('/').map(p => p.trim());
+                if (parts.length >= 2) {
+                    /* First part is Steam ID, second is BM ID */
+                    if (parts[0].length === Constants.STEAMID64_LENGTH) {
+                        steamId = parts[0];
+                        playerId = parts[1];
+                    } else if (parts[1].length === Constants.STEAMID64_LENGTH) {
+                        /* In case they put bmId/steamId */
+                        steamId = parts[1];
+                        playerId = parts[0];
+                    } else {
+                        /* Both look like BM IDs, use first as BM ID */
+                        playerId = parts[0];
+                    }
+                }
+            } else {
+                /* Single ID - determine type by length */
+                const id = line.trim();
+                if (id.length === Constants.STEAMID64_LENGTH) {
+                    steamId = id;
+                } else {
+                    playerId = id;
+                }
+            }
+
+            /* Skip if already exists */
+            if (steamId && tracker.players.some(e => e.steamId === steamId)) {
+                continue;
+            }
+            if (!steamId && playerId && tracker.players.some(e => e.playerId === playerId && e.steamId === null)) {
+                continue;
+            }
+
+            /* Try to get name from BM cache if we have a BM ID */
+            if (playerId && bmInstance && bmInstance.players.hasOwnProperty(playerId)) {
+                name = bmInstance.players[playerId]['name'];
+            }
+
+            const playerIndex = tracker.players.length;
+            tracker.players.push({
+                name: name,
+                steamId: steamId,
+                playerId: playerId,
+                discordId: null
+            });
+            addedPlayers.push({
+                index: playerIndex,
+                steamId: steamId,
+                playerId: playerId,
+                needsSteamName: steamId && name === 'Loading...',
+                needsBmName: !steamId && playerId && name === 'Loading...'
+            });
+        }
+
+        client.setInstance(interaction.guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'modalValueChange', {
+            id: `${verifyId}`,
+            value: `Bulk added ${addedPlayers.length} players`
+        }));
+
+        /* Respond immediately */
+        await DiscordMessages.sendTrackerMessage(interaction.guildId, ids.trackerId, interaction, false);
+
+        /* Fetch names in background for players that need it */
+        const playersNeedingSteamName = addedPlayers.filter(p => p.needsSteamName);
+        const playersNeedingBmName = addedPlayers.filter(p => p.needsBmName);
+
+        /* Batch fetch Steam names via API */
+        if (playersNeedingSteamName.length > 0) {
+            const steamIds = playersNeedingSteamName.map(p => p.steamId);
+            const steamSummaries = await SteamApi.getPlayerSummaries(steamIds);
+            for (const player of playersNeedingSteamName) {
+                const summary = steamSummaries[player.steamId];
+                if (summary?.personaName && tracker.players[player.index]) {
+                    tracker.players[player.index].name = summary.personaName;
+                    /* If no BM ID was provided, try to find one by name */
+                    if (!player.playerId && bmInstance) {
+                        const foundPlayerId = Object.keys(bmInstance.players).find(
+                            e => bmInstance.players[e]['name'] === summary.personaName
+                        );
+                        if (foundPlayerId) tracker.players[player.index].playerId = foundPlayerId;
+                    }
+                }
+            }
+        }
+
+        /* Fetch Battlemetrics names for players with only BM ID */
+        for (const player of playersNeedingBmName) {
+            if (tracker.players[player.index] && tracker.players[player.index].name === 'Loading...') {
+                const fetchedName = await Battlemetrics.getPlayerName(player.playerId);
+                if (fetchedName) {
+                    tracker.players[player.index].name = fetchedName;
+                }
+            }
+        }
+
+        /* Update message with resolved names */
+        if (addedPlayers.length > 0) {
+            client.setInstance(interaction.guildId, instance);
+            await DiscordMessages.sendTrackerMessage(interaction.guildId, ids.trackerId, null, false);
+        }
         return;
     }
 

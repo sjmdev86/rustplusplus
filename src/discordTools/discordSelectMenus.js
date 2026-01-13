@@ -387,4 +387,39 @@ module.exports = {
                 options: options
             }));
     },
+
+    getTrackerPlayerScrapeSelectMenu: function (guildId, trackerId) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const identifier = JSON.stringify({ "trackerId": trackerId });
+
+        const options = [];
+        for (let i = 0; i < tracker.players.length && i < 25; i++) {
+            const player = tracker.players[i];
+            /* Only include players with Steam IDs */
+            if (!player.steamId) continue;
+
+            const playerName = player.name || 'Unknown';
+            options.push({
+                label: playerName.substring(0, 100),
+                description: `Steam ID: ${player.steamId}`.substring(0, 100),
+                value: `${i}`
+            });
+        }
+
+        if (options.length === 0) {
+            options.push({
+                label: Client.client.intlGet(guildId, 'noPlayersWithSteamId'),
+                description: Client.client.intlGet(guildId, 'noPlayersWithSteamIdDesc'),
+                value: 'none'
+            });
+        }
+
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getSelectMenu({
+                customId: `TrackerPlayerScrape${identifier}`,
+                placeholder: Client.client.intlGet(guildId, 'selectPlayerToScrape'),
+                options: options
+            }));
+    },
 }

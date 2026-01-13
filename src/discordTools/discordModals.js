@@ -346,6 +346,29 @@ module.exports = {
         return modal;
     },
 
+    getTrackerBulkAddPlayersModal(guildId, trackerId) {
+        const instance = Client.client.getInstance(guildId);
+        const tracker = instance.trackers[trackerId];
+        const identifier = JSON.stringify({ "trackerId": trackerId });
+
+        const modal = module.exports.getModal({
+            customId: `TrackerBulkAddPlayers${identifier}`,
+            title: Client.client.intlGet(guildId, 'trackerBulkAddPlayersDesc', { tracker: tracker.name })
+        });
+
+        modal.addComponents(
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'TrackerBulkAddPlayerIds',
+                label: Client.client.intlGet(guildId, 'bulkAddIdsLabel'),
+                value: '',
+                style: Discord.TextInputStyle.Paragraph,
+                placeholder: Client.client.intlGet(guildId, 'bulkAddIdsPlaceholder')
+            }))
+        );
+
+        return modal;
+    },
+
     getTrackerRemovePlayerModal(guildId, trackerId) {
         const instance = Client.client.getInstance(guildId);
         const tracker = instance.trackers[trackerId];

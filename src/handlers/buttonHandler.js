@@ -1088,6 +1088,173 @@ module.exports = async (client, interaction) => {
             ephemeral: true
         });
     }
+    else if (interaction.customId.startsWith('TrackerScrapeSteam')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerScrapeSteam', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.message.delete();
+            return;
+        }
+
+        /* Check if any players have Steam IDs */
+        const playersWithSteamId = tracker.players.filter(p => p.steamId);
+        if (playersWithSteamId.length === 0) {
+            await interaction.reply({
+                content: client.intlGet(guildId, 'noPlayersWithSteamIdToScrape'),
+                ephemeral: true
+            });
+            return;
+        }
+
+        /* Defer the reply since Steam API calls may take time */
+        await interaction.deferReply({ ephemeral: true });
+
+        /* Get server player names from Battlemetrics */
+        const bmInstance = client.battlemetricsInstances[tracker.battlemetricsId];
+        const serverPlayerNames = bmInstance ? Object.values(bmInstance.players).map(p => p.name) : [];
+
+        const SteamApi = require('../util/steamApi.js');
+
+        /* Get all tracker player names for matching */
+        const allTrackerNames = tracker.players.map(p => p.name?.toLowerCase()).filter(n => n);
+
+        /* Collated data structures */
+        const friendsOnServerCounts = {}; /* { name: { count, friendOf: [playerNames] } } */
+        const bannedMatchingTrackerCounts = {}; /* { name: { count, bans, friendOf: [playerNames] } } */
+        const playerResults = []; /* Individual results per player */
+        const privateProfiles = [];
+
+        /* Scrape all players */
+        for (const player of playersWithSteamId) {
+            const [bansResult, serverResult] = await Promise.all([
+                SteamApi.getFriendsWithBans(player.steamId),
+                SteamApi.getFriendsOnServer(player.steamId, serverPlayerNames)
+            ]);
+
+            if (bansResult.isPrivate) {
+                privateProfiles.push(player.name);
+                continue;
+            }
+
+            /* Collate friends on server */
+            for (const friend of serverResult.friendsOnServer) {
+                const key = friend.name.toLowerCase();
+                if (!friendsOnServerCounts[key]) {
+                    friendsOnServerCounts[key] = { name: friend.name, count: 0, friendOf: [] };
+                }
+                friendsOnServerCounts[key].count++;
+                friendsOnServerCounts[key].friendOf.push(player.name);
+            }
+
+            /* Collate banned friends matching tracker */
+            for (const friend of bansResult.friendsWithBans) {
+                const friendNameLower = friend.name?.toLowerCase();
+                if (friendNameLower && allTrackerNames.includes(friendNameLower) &&
+                    friendNameLower !== player.name?.toLowerCase()) {
+                    const key = friendNameLower;
+                    if (!bannedMatchingTrackerCounts[key]) {
+                        bannedMatchingTrackerCounts[key] = {
+                            name: friend.name,
+                            count: 0,
+                            friendOf: [],
+                            vacBans: friend.vacBans,
+                            gameBans: friend.gameBans,
+                            communityBanned: friend.communityBanned,
+                            daysSinceLastBan: friend.daysSinceLastBan
+                        };
+                    }
+                    bannedMatchingTrackerCounts[key].count++;
+                    bannedMatchingTrackerCounts[key].friendOf.push(player.name);
+                }
+            }
+
+            /* Store individual results */
+            playerResults.push({
+                name: player.name,
+                totalFriends: bansResult.totalFriends,
+                friendsWithBans: bansResult.friendsWithBans
+            });
+        }
+
+        /* Build plain text output */
+        let output = `**__Steam Scrape Results for ${tracker.name}__**\n\n`;
+
+        /* Private profiles - skip showing them */
+
+        /* Friends on Server (collated) */
+        const friendsOnServerList = Object.values(friendsOnServerCounts)
+            .sort((a, b) => b.count - a.count);
+        if (friendsOnServerList.length > 0) {
+            output += `**__Possible Friends on Server__**\n`;
+            for (const f of friendsOnServerList.slice(0, 20)) {
+                const hits = f.count > 1 ? ` **(${f.count} hits)**` : '';
+                output += `• ${f.name}${hits} - friends with: ${f.friendOf.join(', ')}\n`;
+            }
+            output += '\n';
+        }
+
+        /* Banned friends matching tracker (collated) */
+        const bannedMatchingList = Object.values(bannedMatchingTrackerCounts)
+            .sort((a, b) => b.count - a.count);
+        if (bannedMatchingList.length > 0) {
+            output += `**__⚠️ Banned Friends Matching Tracker Names__**\n`;
+            for (const f of bannedMatchingList.slice(0, 20)) {
+                const bans = [];
+                if (f.vacBans > 0) bans.push(`${f.vacBans} VAC`);
+                if (f.gameBans > 0) bans.push(`${f.gameBans} Game`);
+                if (f.communityBanned) bans.push('Community');
+                const daysAgo = f.daysSinceLastBan > 0 ? ` (${f.daysSinceLastBan}d ago)` : '';
+                const hits = f.count > 1 ? ` **(${f.count} hits)**` : '';
+                output += `• ${f.name}: ${bans.join(', ')}${daysAgo}${hits} - friends with: ${f.friendOf.join(', ')}\n`;
+            }
+            output += '\n';
+        }
+
+        /* Per-player friends with bans */
+        output += `**__Friends with Bans (per player)__**\n`;
+        for (const result of playerResults) {
+            if (result.friendsWithBans.length === 0) {
+                output += `**${result.name}** (${result.totalFriends} friends): No banned friends\n`;
+            } else {
+                output += `**${result.name}** (${result.totalFriends} friends): ${result.friendsWithBans.length} banned friends\n`;
+                for (const f of result.friendsWithBans.slice(0, 5)) {
+                    const bans = [];
+                    if (f.vacBans > 0) bans.push(`${f.vacBans} VAC`);
+                    if (f.gameBans > 0) bans.push(`${f.gameBans} Game`);
+                    if (f.communityBanned) bans.push('Community');
+                    const daysAgo = f.daysSinceLastBan > 0 ? ` (${f.daysSinceLastBan}d ago)` : '';
+                    output += `  └ ${f.name}: ${bans.join(', ')}${daysAgo}\n`;
+                }
+                if (result.friendsWithBans.length > 5) {
+                    output += `  └ ... and ${result.friendsWithBans.length - 5} more\n`;
+                }
+            }
+        }
+
+        /* Discord message limit is 2000 chars - split if needed */
+        if (output.length <= 2000) {
+            await interaction.editReply({ content: output });
+        } else {
+            /* Split into multiple messages */
+            const chunks = [];
+            let current = '';
+            for (const line of output.split('\n')) {
+                if ((current + line + '\n').length > 1900) {
+                    chunks.push(current);
+                    current = line + '\n';
+                } else {
+                    current += line + '\n';
+                }
+            }
+            if (current) chunks.push(current);
+
+            await interaction.editReply({ content: chunks[0] });
+            for (let i = 1; i < chunks.length && i < 5; i++) {
+                await interaction.followUp({ content: chunks[i], ephemeral: true });
+            }
+        }
+    }
     else if (interaction.customId.startsWith('TrackerSettingInGame')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerSettingInGame', ''));
         const tracker = instance.trackers[ids.trackerId];
@@ -1230,6 +1397,18 @@ module.exports = async (client, interaction) => {
             components: [selectMenu],
             ephemeral: true
         });
+    }
+    else if (interaction.customId.startsWith('TrackerBulkAddPlayers')) {
+        const ids = JSON.parse(interaction.customId.replace('TrackerBulkAddPlayers', ''));
+        const tracker = instance.trackers[ids.trackerId];
+
+        if (!tracker) {
+            await interaction.message.delete();
+            return;
+        }
+
+        const modal = DiscordModals.getTrackerBulkAddPlayersModal(guildId, ids.trackerId);
+        await interaction.showModal(modal);
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userButtonInteractionSuccess', {
